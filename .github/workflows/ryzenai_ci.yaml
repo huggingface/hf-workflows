@@ -34,11 +34,11 @@ jobs:
     runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
     steps:
     - uses: actions/checkout@v2
-    - name: Create and start a virtual environment
-      run: |
-        conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.0.1-ci
-        conda init
-        conda activate .\venv
+    #- name: Create and start a virtual environment
+    #  run: |
+    #    conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.0.1-ci
+    #    conda init
+    #    conda activate .\venv
     #- name: Install dependencies
     #  run: |
     #    conda activate .\venv
@@ -53,15 +53,16 @@ jobs:
         SLOW_TEST: ${{ inputs.slow_test}}
         XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
       run: |
-        conda activate .\venv
+        #conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
         if ( $SLOW_TEST ) { $env:RUN_SLOW=1 }
         #$pytestCommand = "pytest -s -vvvvv"
-        $pytestCommand = "$var = ${{ inputs.pytest_marker}}"
+        $pytestCommand = "write-output '${{ inputs.pytest_marker}}'"
         #if ( $MARKER -ne $null ) { $pytestCommand += " -m '$env:MARKER'" }
         #if ( $REPORT_NAME -ne $null ) { $pytestCommand += " --make-reports '$env:REPORT_NAME'" }
         #$pytestCommand += " '$env:TEST_FILE'" 
         write-output $pytestcommand
+        invoke-expression $pytestcommand
     
 
     - name: Cleanup
