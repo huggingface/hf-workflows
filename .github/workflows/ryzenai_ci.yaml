@@ -7,6 +7,7 @@ on:
     inputs:
       pytest_marker:
         required: false
+        default: ""
         type: string
         description: 'Pytest marker to execute (python -m paramater)'
       test_file:
@@ -14,10 +15,12 @@ on:
         type: string
         description: 'Pytest file to execute'
       report_name:
-        default: false
+        required: false
+        default: ""
         type: string
         description: 'Report name if you need to make reports'
       slow_test:
+        required: false
         default: false
         type: boolean
         description: 'Manage the varible env:RUN_SLOW value'
@@ -52,19 +55,12 @@ jobs:
       run: |
         conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
-        if ( $SLOW_TEST ) {
-        $env:RUN_SLOW=1;
-        }
-        if ( $REPORT_NAME -ne $null ) {
-        #pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
-        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' '$TEST_FILE'"
+        if ( $SLOW_TEST ) { $env:RUN_SLOW=1 }
+        $pytestCommand = "pytest -s -vvvvv"
+        if ( $MARKER -ne $null ) { $pytestCommand += " -m '$env:MARKER'" }
+        if ( $REPORT_NAME -ne $null ) { $pytestCommand += " --make-reports '$env:REPORT_NAME'" }
+        $pytestCommand += " '$env:TEST_FILE'" 
         write-output $pytestcommand
-        } 
-        else {
-        #pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"
-        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' --make-reports='$env:REPORT_NAME' '$TEST_FILE'"
-        write-output $pytestcommand
-        }
     
 
     - name: Cleanup
