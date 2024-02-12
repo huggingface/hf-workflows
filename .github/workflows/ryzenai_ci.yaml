@@ -7,8 +7,7 @@ on:
     inputs:
       pytest_marker:
         required: false
-        default: ""
-        type: string
+        type: choice
         description: 'Pytest marker to execute (python -m paramater)'
         options:
           - "not prequantized_model_test"
