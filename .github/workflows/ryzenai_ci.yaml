@@ -24,7 +24,7 @@ on:
         type: boolean
         description: 'Manage the varible env:RUN_SLOW value'
     secrets:
-      HF_READ_TOKEN:
+      hf_hub_read_token:
         required: false
 jobs:
   build:
@@ -50,12 +50,21 @@ jobs:
         TEST_FILE: ${{ inputs.test_file}}
         REPORT_NAME: ${{ inputs.report_name}}
         SLOW_TEST: ${{ inputs.slow_test}}
+        HF_HUB_READ_TOKEN: ${{ inputs.hf_hub_read_token}}
         XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
       run: |
         conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
-        if ( $env:SLOW_TEST ) { $env:RUN_SLOW=1 }
-        if ( $env:REPORT_NAME -eq $null ) {
+        if ( $env:HF_HUB_READ_TOKEN ) {
+          huggingface-cli login --token "$env:HF_HUB_READ_TOKEN"
+        }
+        if ( $env:SLOW_TEST ) { 
+          $env:RUN_SLOW=1 
+        }
+        if ( $env:MARKER -eq $null ) {
+          pytest -s -vvvvv "$env:TEST_FILE"
+        }
+        elseif ( $env:REPORT_NAME -eq $null ) {
           pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
         }
         else
