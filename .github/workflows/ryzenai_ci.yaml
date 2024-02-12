@@ -62,13 +62,16 @@ jobs:
           $env:RUN_SLOW=1 
         }
         if ( $env:MARKER -eq $null ) {
+          write-output "without marker"
           pytest -s -vvvvv "$env:TEST_FILE"
         }
         elseif ( $env:REPORT_NAME -eq $null ) {
+          write-output "with marker"
           pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
         }
         else
         {
+          write-output "with marker and report"
           pytest -s -vvvvv -m "$env:MARKER" --make-reports "$env:REPORT_NAME" "$env:TEST_FILE"
         }  
 
