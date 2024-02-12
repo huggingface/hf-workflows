@@ -57,7 +57,7 @@ jobs:
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
         if ( $SLOW_TEST ) { $env:RUN_SLOW=1 }
         #$pytestCommand = "pytest -s -vvvvv"
-        $pytestCommand = "write-output '${{ inputs.pytest_marker}}'"
+        $pytestCommand = "write-output '$env:MARKER'"
         #if ( $MARKER -ne $null ) { $pytestCommand += " -m '$env:MARKER'" }
         #if ( $REPORT_NAME -ne $null ) { $pytestCommand += " --make-reports '$env:REPORT_NAME'" }
         #$pytestCommand += " '$env:TEST_FILE'" 
