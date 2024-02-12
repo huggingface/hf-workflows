@@ -51,14 +51,15 @@ jobs:
       run: |
         conda activate .\venv
         $env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
-        if [[ $SLOW_TEST == true ]]; then
+        if ( $SLOW_TEST ) {
         $env:RUN_SLOW=1;
-        fi
-        if [[ -z $REPORT_NAME ]]; then
+        }
+        if ( $REPORT_NAME ) {
         pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"
-        else
+        } 
+        else {
         pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"
-        fi
+        }
     
 
     - name: Cleanup
