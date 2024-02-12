@@ -28,6 +28,7 @@ on:
         required: false
 jobs:
   build:
+    timeout-minutes: 1200 # 20 Hrs
     strategy:
       fail-fast: false
     runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
@@ -59,6 +60,7 @@ jobs:
           huggingface-cli login --token "$env:HF_HUB_READ_TOKEN"
         }
         if ( $env:SLOW_TEST ) { 
+          write-output "slow run"
           $env:RUN_SLOW=1 
         }
         if ( $env:MARKER -eq $null ) {
