@@ -15,7 +15,7 @@ on:
         description: 'Pytest file to execute'
       report_name:
         default: false
-        type: boolean
+        type: string
         description: 'Report name if you need to make reports'
       slow_test:
         default: false
@@ -55,14 +55,14 @@ jobs:
         if ( $SLOW_TEST ) {
         $env:RUN_SLOW=1;
         }
-        if ( $REPORT_NAME ) {
+        if ( $REPORT_NAME -ne $null ) {
         #pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
-        $pytestcommand = 'pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"'
+        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' '$TEST_FILE'"
         write-output $pytestcommand
         } 
         else {
         #pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"
-        $pytestcommand = 'pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"'
+        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' --make-reports="$env:REPORT_NAME" '$TEST_FILE'"
         write-output $pytestcommand
         }
     
