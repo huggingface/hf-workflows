@@ -10,6 +10,8 @@ on:
         default: ""
         type: string
         description: 'Pytest marker to execute (python -m paramater)'
+        options:
+          - "not prequantized_model_test"
       test_file:
         required: true
         type: string
