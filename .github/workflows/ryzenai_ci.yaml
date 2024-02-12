@@ -50,7 +50,7 @@ jobs:
         TEST_FILE: ${{ inputs.test_file}}
         REPORT_NAME: ${{ inputs.report_name}}
         SLOW_TEST: ${{ inputs.slow_test}}
-        HF_HUB_READ_TOKEN: ${{ inputs.hf_hub_read_token}}
+        HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
         XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
       run: |
         conda activate .\venv
@@ -75,7 +75,7 @@ jobs:
     - name: Cleanup
       if: ${{ always() }}
       env:
-        HF_HUB_READ_TOKEN: ${{ inputs.hf_hub_read_token}}
+        HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
       run: |
         rm -r .\venv
         if ( $env:HF_HUB_READ_TOKEN ) {
