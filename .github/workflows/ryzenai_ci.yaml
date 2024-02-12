@@ -62,7 +62,7 @@ jobs:
         } 
         else {
         #pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"
-        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' --make-reports="$env:REPORT_NAME" '$TEST_FILE'"
+        $pytestcommand = "pytest -s -vvvvv -m '$env:MARKER' --make-reports='$env:REPORT_NAME' '$TEST_FILE'"
         write-output $pytestcommand
         }
     
