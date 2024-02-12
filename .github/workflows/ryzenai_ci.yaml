@@ -46,7 +46,7 @@ jobs:
       run: |
         conda activate .\venv
         $env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
-        pytest -s -vvvvv -m ${{ inputs.pytest_marker}} ${{ inputs.test_file}}
+        pytest -s -vvvvv -m "${{ inputs.pytest_marker}}" ${{ inputs.test_file}}
     - name: Cleanup
       run: |
         rm -r .\venv
