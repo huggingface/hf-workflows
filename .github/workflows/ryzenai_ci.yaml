@@ -36,12 +36,12 @@ jobs:
         conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.0.1-ci
         conda init
         conda activate .\venv
-    - name: Install dependencies
-      run: |
-        conda activate .\venv
-        python -m pip install --upgrade pip
-        pip install .[tests]
-        pip install git+https://github.com/huggingface/optimum.git
+    #- name: Install dependencies
+    #  run: |
+    #    conda activate .\venv
+    #    python -m pip install --upgrade pip
+    #    pip install .[tests]
+    #    pip install git+https://github.com/huggingface/optimum.git
     - name: Test with Pytest
       env:
         MARKER: ${{ inputs.pytest_marker}}
@@ -55,10 +55,14 @@ jobs:
         $env:RUN_SLOW=1;
         }
         if ( $REPORT_NAME ) {
-        pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"
+        #pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"
+        $pytestcommand = 'pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"'
+        write-output $pytestcommand
         } 
         else {
-        pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"
+        #pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"
+        $pytestcommand = 'pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"'
+        write-output $pytestcommand
         }
     
 
