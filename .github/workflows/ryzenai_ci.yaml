@@ -48,20 +48,21 @@ jobs:
         TEST_FILE: ${{ inputs.test_file}}
         REPORT_NAME: ${{ inputs.report_name}}
         SLOW_TEST: ${{ inputs.slow_test}}
+        XLNX_VART_FIRMWARE: "C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
       run: |
         conda activate .\venv
-        $env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
+        #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
         if ( $SLOW_TEST ) {
         $env:RUN_SLOW=1;
         }
         if ( $REPORT_NAME ) {
-        #pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"
-        $pytestcommand = 'pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"'
+        #pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
+        $pytestcommand = 'pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"'
         write-output $pytestcommand
         } 
         else {
-        #pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"
-        $pytestcommand = 'pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"'
+        #pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"
+        $pytestcommand = 'pytest -s -vvvvv -m "$env:MARKER" --make-reports="$env:REPORT_NAME" "$env:TEST_FILE"'
         write-output $pytestcommand
         }
     
