@@ -48,7 +48,7 @@ jobs:
         TEST_FILE: ${{ inputs.test_file}}
         REPORT_NAME: ${{ inputs.report_name}}
         SLOW_TEST: ${{ inputs.slow_test}}
-        XLNX_VART_FIRMWARE: "C:\RyzenAiSw\\ryzen-ai-sw-1.0.1\\voe-4.0-win_amd64\\1x4.xclbin"
+        XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
       run: |
         conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
