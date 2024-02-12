@@ -43,10 +43,24 @@ jobs:
         pip install .[tests]
         pip install git+https://github.com/huggingface/optimum.git
     - name: Test with Pytest
+      env:
+        MARKER: ${{ inputs.pytest_marker}}
+        TEST_FILE: ${{ inputs.test_file}}
+        REPORT_NAME: ${{ inputs.report_name}}
+        SLOW_TEST: ${{ inputs.slow_test}}
       run: |
         conda activate .\venv
         $env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
-        pytest -s -vvvvv -m "${{ inputs.pytest_marker}}" ${{ inputs.test_file}}
+        if [[ $SLOW_TEST == true ]]; then
+        $env:RUN_SLOW=1;
+        fi
+        if [[ -z $REPORT_NAME ]]; then
+        pytest -s -vvvvv -m "$MARKER"  "$TEST_FILE"
+        else
+        pytest -s -vvvvv -m "$MARKER" --make-reports="$REPORT_NAME" "$TEST_FILE"
+        fi
+    
+
     - name: Cleanup
       run: |
         rm -r .\venv
