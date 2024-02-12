@@ -78,13 +78,13 @@ jobs:
         }  
 
     - name: Failure short reports
-      if: ${{ failure() && inputs.report_name != "" }}
+      if: ${{ failure() && inputs.report_name != '' }}
       continue-on-error: true
       env:
         REPORT_NAME: ${{ inputs.report_name}}
       run: cat reports\$env:REPORT_NAME\failures_short.txt
     - name: "Test suite reports artifacts"
-      if: ${{ always() && inputs.report_name != "" }}
+      if: ${{ always() && inputs.report_name != '' }}
       uses: actions/upload-artifact@v3
       with:
         name: run_${{ inputs.report_name}}
