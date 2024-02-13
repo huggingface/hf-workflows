@@ -64,7 +64,7 @@ jobs:
           write-output "with slow run"
           $env:RUN_SLOW=1 
         }
-        if ( $env:MARKER -eq $null ) {
+        if ( $env:MARKER -eq "" ) {
           write-output "without marker"
           pytest -s -vvvvv "$env:TEST_FILE"
         }
