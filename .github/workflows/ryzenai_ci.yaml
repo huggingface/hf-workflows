@@ -57,7 +57,7 @@ jobs:
         #conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
         if ( $env:HF_HUB_READ_TOKEN ) {
-          write-outpout "with HF token"
+          write-output "with HF token"
           huggingface-cli login --token "$env:HF_HUB_READ_TOKEN"
         }
         if ( $env:SLOW_TEST -eq $true) { 
