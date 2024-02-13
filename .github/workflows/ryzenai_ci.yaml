@@ -45,14 +45,14 @@ jobs:
     #     python -m pip install --upgrade pip
     #     pip install .[tests]
     #     pip install git+https://github.com/huggingface/optimum.git
-    # - name: Test with Pytest
-    #   env:
-    #     MARKER: ${{ inputs.pytest_marker}}
-    #     TEST_FILE: ${{ inputs.test_file}}
-    #     REPORT_NAME: ${{ inputs.report_name}}
-    #     SLOW_TEST: ${{ inputs.slow_test}}
-    #     HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
-    #     XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
+    - name: Test with Pytest
+      env:
+        MARKER: ${{ inputs.pytest_marker}}
+        TEST_FILE: ${{ inputs.test_file}}
+        REPORT_NAME: ${{ inputs.report_name}}
+        SLOW_TEST: ${{ inputs.slow_test}}
+        HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
+        XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
       run: |
         #conda activate .\venv
         #$env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
