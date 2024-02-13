@@ -23,12 +23,17 @@ on:
         default: false
         type: boolean
         description: 'Manage the varible env:RUN_SLOW value'
+      timeout_minutes:
+        required: false
+        default: 360
+        type: number
+        description: 'Manage the timemout for the job'
     secrets:
       hf_hub_read_token:
         required: false
 jobs:
   build:
-    timeout-minutes: 1200 # 20 Hrs
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     strategy:
       fail-fast: false
     runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
