@@ -59,7 +59,7 @@ jobs:
         if ( $env:HF_HUB_READ_TOKEN ) {
           huggingface-cli login --token "$env:HF_HUB_READ_TOKEN"
         }
-        if ( $env:SLOW_TEST ) { 
+        if ( $env:SLOW_TEST -eq $true) { 
           write-output "slow run"
           $env:RUN_SLOW=1 
         }
