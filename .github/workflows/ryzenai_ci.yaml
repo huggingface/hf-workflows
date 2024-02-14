@@ -15,7 +15,6 @@ on:
         description: 'Pytest file to execute'
       report_name:
         required: false
-        default: ""
         type: string
         description: 'Report name if you need to make reports'
       slow_test:
