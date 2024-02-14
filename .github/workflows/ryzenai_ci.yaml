@@ -72,7 +72,7 @@ jobs:
           write-output "pytest $env:TEST_FILE without marker"
           pytest -s -vvvvv "$env:TEST_FILE"
         }
-        elseif ( $env:REPORT_NAME -eq "" ) {
+        elseif ( $env:REPORT_NAME -eq $null ) {
           write-output "pytest $env:TEST_FILE with marker $env:MARKER"
           pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
         }
