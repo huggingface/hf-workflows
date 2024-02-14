@@ -15,7 +15,6 @@ on:
         description: 'Pytest file to execute'
       report_name:
         required: false
-        default: ""
         type: string
         description: 'Report name if you need to make reports'
       slow_test:
@@ -69,11 +68,11 @@ jobs:
           write-output "with slow run"
           $env:RUN_SLOW=1 
         }
-        if ( $env:MARKER -eq "" ) {
+        if ( $env:MARKER -eq $null ) {
           write-output "pytest $env:TEST_FILE without marker"
           pytest -s -vvvvv "$env:TEST_FILE"
         }
-        elseif ( $env:REPORT_NAME -eq "" ) {
+        elseif ( $env:REPORT_NAME -eq $null ) {
           write-output "pytest $env:TEST_FILE with marker $env:MARKER"
           pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
         }
