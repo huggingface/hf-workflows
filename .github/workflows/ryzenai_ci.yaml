@@ -1,0 +1,106 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+name: Ryzen Modeling - Test
+
+on:
+  workflow_call:
+    inputs:
+      pytest_marker:
+        required: false
+        type: string
+        description: 'Pytest marker to execute (python -m paramater)'
+      test_file:
+        required: true
+        type: string
+        description: 'Pytest file to execute'
+      report_name:
+        required: false
+        default: ""
+        type: string
+        description: 'Report name if you need to make reports'
+      slow_test:
+        required: false
+        default: false
+        type: boolean
+        description: 'Manage the varible env:RUN_SLOW value'
+      timeout_minutes:
+        required: false
+        default: 360
+        type: number
+        description: 'Manage the timemout for the job'
+    secrets:
+      hf_hub_read_token:
+        required: false
+jobs:
+  build:
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    strategy:
+      fail-fast: false
+    runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create and start a virtual environment
+      run: |
+        conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.0.1-ci
+        conda init
+        conda activate .\venv
+    - name: Install dependencies
+      run: |
+        conda activate .\venv
+        python -m pip install --upgrade pip
+        pip install .[tests]
+        pip install git+https://github.com/huggingface/optimum.git
+    - name: Test with Pytest
+      env:
+        MARKER: ${{ inputs.pytest_marker}}
+        TEST_FILE: ${{ inputs.test_file}}
+        REPORT_NAME: ${{ inputs.report_name}}
+        SLOW_TEST: ${{ inputs.slow_test}}
+        HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
+        #XLNX_VART_FIRMWARE: 'C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin'
+      run: |
+        conda activate .\venv
+        $env:XLNX_VART_FIRMWARE="C:\RyzenAiSw\ryzen-ai-sw-1.0.1\voe-4.0-win_amd64\1x4.xclbin"
+        if ( $env:HF_HUB_READ_TOKEN ) {
+          write-output "with HF token"
+          huggingface-cli login --token "$env:HF_HUB_READ_TOKEN"
+        }
+        if ( $env:SLOW_TEST -eq $true) { 
+          write-output "with slow run"
+          $env:RUN_SLOW=1 
+        }
+        if ( $env:MARKER -eq "" ) {
+          write-output "without marker"
+          pytest -s -vvvvv "$env:TEST_FILE"
+        }
+        elseif ( $env:REPORT_NAME -eq "" ) {
+          write-output "with marker"
+          pytest -s -vvvvv -m "$env:MARKER" "$env:TEST_FILE"
+        }
+        else {
+          write-output "with marker and report"
+          pytest -s -vvvvv -m "$env:MARKER" --make-reports "$env:REPORT_NAME" "$env:TEST_FILE"
+        }  
+
+    - name: Failure short reports
+      if: ${{ failure() && inputs.report_name != '' }}
+      continue-on-error: true
+      env:
+        REPORT_NAME: ${{ inputs.report_name}}
+      run: cat reports\$env:REPORT_NAME\failures_short.txt
+    - name: "Test suite reports artifacts"
+      if: ${{ always() && inputs.report_name != '' }}
+      uses: actions/upload-artifact@v3
+      with:
+        name: run_${{ inputs.report_name}}
+        path: .\reports\${{ inputs.report_name}}\
+
+    - name: Cleanup
+      if: ${{ always() }}
+      env:
+        HF_HUB_READ_TOKEN: ${{ secrets.hf_hub_read_token}}
+      run: |
+        rm -r .\venv
+        if ( $env:HF_HUB_READ_TOKEN ) {
+          huggingface-cli logout
+        }
