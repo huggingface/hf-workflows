@@ -9,7 +9,7 @@ on:
         description: 'Slack Channel ID'
     secrets:
       slack_bot_token:
-        required: false
+        required: true
 jobs:
   send_slack_message:
     runs-on: [cpu]
