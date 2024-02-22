@@ -1,6 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-name: Ryzen Modeling - Test
+name: Post Slack message
 
 on:
   workflow_call:
@@ -13,15 +11,17 @@ on:
       slack_bot_token:
         required: false
 jobs:
-  steps:
-   - name: Post to a Slack channel
+  send_slack_message:
+    runs-on: [cpu]
+    steps:
+    - name: Post to a Slack channel
       id: slack
       #uses: slackapi/slack-github-action@v1.25.0
       uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001
       with:
         # Slack channel id, channel name, or user id to post message.
         # See also: https://api.slack.com/methods/chat.postMessage#channels
-        channel-id: 'C06L7KU9WQ4'
+        channel-id: ${{ inputs.slack_channel_id }}
         # For posting a rich message using Block Kit
         payload: |
           {
@@ -37,4 +37,4 @@ jobs:
             ]
           }
       env:
-        SLACK_BOT_TOKEN: ${{ secrets.SLACK_CIFEEDBACK_BOT_TOKEN }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack_bot_token }}
