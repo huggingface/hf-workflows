@@ -1,0 +1,14 @@
+name: Swift Transformers Unit Tests
+
+on:
+  workflow_call:
+
+jobs:
+  build-and-test:
+    runs-on: [ self-hosted, macOS ]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: swift build --vv --build-tests
+    - name: Run tests
+      run: swift test --vv --skip-build
