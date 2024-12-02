@@ -93,7 +93,7 @@ jobs:
       with:
         name: run_${{ inputs.report_name}}
         path: .\reports\${{ inputs.report_name}}\
-        
+
     - name: Cleanup
       if: ${{ always() }}
       env:
