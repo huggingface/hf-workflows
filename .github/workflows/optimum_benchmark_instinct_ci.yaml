@@ -1,0 +1,50 @@
+name: Optimum-Benchmark Instinct CI
+
+on:
+  workflow_call:
+    inputs:
+      machine_type:
+        description: "Machine type to run the tests on ('single-gpu' or 'multi-gpu')"
+        required: true
+        type: string
+
+      install_extras:
+        description: "Install extra dependencies (e.g. 'testing,timm,diffusers')"
+        required: true
+        type: string
+
+      pytest_keywords:
+        description: "Pytest keywords to run (e.g. 'api and rocm')"
+        required: true
+        type: string
+
+    secrets:
+      HF_TOKEN:
+        required: false
+
+jobs:
+  build:
+    runs-on: [self-hosted, amd-gpu, "${{ inputs.machine_type }}"]
+
+    container:
+      image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
+      options: --ipc host
+        --group-add video
+        --device /dev/kfd
+        --device /dev/dri
+        --env ROCR_VISIBLE_DEVICES
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[${{ inputs.install_extras }}]
+
+      - name: Run tests
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          PUSH_REPO_ID: optimum-benchmark/rocm
+        run: |
+          pytest tests/* -x -s -k "${{ inputs.pytest_keywords }}"
