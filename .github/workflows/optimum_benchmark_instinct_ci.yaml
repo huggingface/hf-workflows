@@ -24,7 +24,7 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, amd-gpu, "${{ inputs.machine_type }}"]
+    runs-on: [self-hosted, amd-gpu, mi250, "${{ inputs.machine_type }}"]
 
     container:
       image: ghcr.io/huggingface/optimum-benchmark:latest-rocm
