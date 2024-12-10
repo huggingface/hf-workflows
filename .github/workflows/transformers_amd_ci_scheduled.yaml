@@ -149,7 +149,7 @@ jobs:
       matrix:
         machine_type: [single-gpu, multi-gpu]
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
-    uses: ./.github/workflows/model_jobs_amd.yml
+    uses: ./.github/workflows/transformers_amd_model_jobs.yaml
     with:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
