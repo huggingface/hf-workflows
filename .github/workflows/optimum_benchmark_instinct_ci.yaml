@@ -13,6 +13,11 @@ on:
         required: true
         type: string
 
+      test_file:
+        description: "Targeted test file (e.g. 'test_cli.py' or 'test_api.py')"
+        required: true
+        type: string
+
       pytest_keywords:
         description: "Pytest keywords to run (e.g. 'api and rocm')"
         required: true
@@ -48,4 +53,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
         run: |
-          pytest tests/* -x -s -k "${{ inputs.pytest_keywords }}"
+          pytest tests/${{inputs.test_file}} -x -s -k "${{ inputs.pytest_keywords }}"
