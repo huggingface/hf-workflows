@@ -366,7 +366,7 @@ jobs:
         run_torch_cuda_extensions_gpu,
       ]
     if: ${{ always() }}
-    uses: huggingface/transformers/.github/workflows/slack-report.yml
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
     with:
       job: ${{ inputs.job }}
       # This would be `skipped` if `setup` is skipped.
