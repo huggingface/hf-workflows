@@ -372,6 +372,8 @@ jobs:
       # This would be `skipped` if `setup` is skipped.
       setup_status: ${{ needs.setup.result }}
       slack_report_channel: ${{ inputs.slack_report_channel }}
+      report_repo_id: "optimum-amd/transformers_daily_ci"
+      upload_report_summary: true
       # This would be an empty string if `setup` is skipped.
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
