@@ -64,15 +64,13 @@ jobs:
       ]
     container:
       image: huggingface/transformers-pytorch-amd-gpu
-      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
     steps:
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: amd-smi list
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -101,8 +99,7 @@ jobs:
     steps:
       - name: Update clone
         working-directory: /transformers
-        run: |
-          git fetch && git checkout ${{ github.sha }}
+        run: git fetch && git checkout ${{ github.sha }}
 
       - name: Cleanup
         working-directory: /transformers
@@ -122,13 +119,11 @@ jobs:
           echo "folder_slices=$(python3 ../utils/split_model_tests.py --num_splits ${{ env.NUM_SLICES }})" >> $GITHUB_OUTPUT
           echo "slice_ids=$(python3 -c 'd = list(range(${{ env.NUM_SLICES }})); print(d)')" >> $GITHUB_OUTPUT
 
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: amd-smi list
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -136,8 +131,7 @@ jobs:
 
       - name: Environment
         working-directory: /transformers
-        run: |
-          python3 utils/print_env.py
+        run: python3 utils/print_env.py
 
   run_models_gpu:
     if: ${{ inputs.job == 'run_models_gpu' }}
@@ -185,13 +179,11 @@ jobs:
         working-directory: /transformers
         run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
 
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: amd-smi list
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -199,8 +191,7 @@ jobs:
 
       - name: Environment
         working-directory: /transformers
-        run: |
-          python3 utils/print_env.py
+        run: python3 utils/print_env.py
 
       - name: Show installed libraries and their versions
         working-directory: /transformers
@@ -208,8 +199,7 @@ jobs:
 
       - name: Run all pipeline tests on GPU
         working-directory: /transformers
-        run: |
-          python3 -m pytest -n 1 -v --dist=loadfile --make-reports=${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports tests/pipelines -m "not not_device_test"
+        run: python3 -m pytest -n 1 -v --dist=loadfile --make-reports=${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports tests/pipelines -m "not not_device_test"
 
       - name: Failure short reports
         if: ${{ failure() }}
@@ -250,13 +240,11 @@ jobs:
         working-directory: /transformers
         run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
 
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: amd-smi list
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -264,8 +252,7 @@ jobs:
 
       - name: Environment
         working-directory: /transformers
-        run: |
-          python3 utils/print_env.py
+        run: python3 utils/print_env.py
 
       - name: Show installed libraries and their versions
         working-directory: /transformers
@@ -316,13 +303,11 @@ jobs:
         working-directory: /transformers
         run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
 
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: amd-smi list
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -330,8 +315,7 @@ jobs:
 
       - name: Environment
         working-directory: /transformers
-        run: |
-          python3 utils/print_env.py
+        run: python3 utils/print_env.py
 
       - name: Show installed libraries and their versions
         working-directory: /transformers
