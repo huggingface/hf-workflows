@@ -37,11 +37,17 @@ jobs:
   run_models_gpu:
     name: " "
     strategy:
-      max-parallel: 1  # For now, not to parallelize. Can change later if it works well.
+      max-parallel: 1 # For now, not to parallelize. Can change later if it works well.
       fail-fast: false
       matrix:
         folders: ${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
-    runs-on: ['${{ inputs.machine_type }}', self-hosted, amd-gpu, '${{ inputs.runner }}']
+    runs-on:
+      [
+        "${{ inputs.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
     container:
       image: ${{ inputs.docker }}
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -75,22 +81,18 @@ jobs:
       - name: Update / Install some packages (for Past CI)
         if: ${{ contains(inputs.docker, '-past-') }}
         working-directory: /transformers
-        run: |
-          python3 -m pip install -U datasets
+        run: python3 -m pip install -U datasets
 
       - name: Update / Install some packages (for Past CI)
         if: ${{ contains(inputs.docker, '-past-') && contains(inputs.docker, '-pytorch-') }}
         working-directory: /transformers
-        run: |
-          python3 -m pip install --no-cache-dir git+https://github.com/huggingface/accelerate@main#egg=accelerate
+        run: python3 -m pip install --no-cache-dir git+https://github.com/huggingface/accelerate@main#egg=accelerate
 
-      - name: ROCM-SMI
-        run: |
-          rocm-smi
+      - name: AMD-SMI
+        run: python3 utils/process_retry.py 'amd-smi list'
 
       - name: ROCM-INFO
-        run: |
-          rocminfo  | grep "Agent" -A 14
+        run: rocminfo  | grep "Agent" -A 14
 
       - name: Show ROCR environment
         run: |
@@ -98,8 +100,7 @@ jobs:
 
       - name: Environment
         working-directory: /transformers
-        run: |
-          python3 utils/print_env.py
+        run: python3 utils/print_env.py
 
       - name: Show installed libraries and their versions
         working-directory: /transformers
@@ -127,4 +128,3 @@ jobs:
         with:
           name: ${{ inputs.machine_type }}_run_models_gpu_${{ env.matrix_folders }}_test_reports
           path: /transformers/reports/${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports
-
