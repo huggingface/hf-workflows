@@ -75,6 +75,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 
   setup:
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
@@ -128,6 +129,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 
       - name: Environment
         working-directory: /transformers
@@ -188,6 +190,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 
       - name: Environment
         working-directory: /transformers
@@ -249,6 +252,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 
       - name: Environment
         working-directory: /transformers
@@ -312,6 +316,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 
       - name: Environment
         working-directory: /transformers
