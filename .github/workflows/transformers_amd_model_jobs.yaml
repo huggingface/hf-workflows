@@ -50,7 +50,7 @@ jobs:
       ]
     container:
       image: ${{ inputs.docker }}
-      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
     steps:
       - name: Echo input and matrix info
         shell: bash
@@ -100,7 +100,7 @@ jobs:
       - name: Show ROCR environment
         run: |
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
-          export HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
+          echo "HIP:  $HIP_VISIBLE_DEVICES"
 
       - name: Environment
         working-directory: /transformers
