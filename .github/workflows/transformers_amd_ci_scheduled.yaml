@@ -140,7 +140,6 @@ jobs:
     name: Single GPU tests
     needs: setup
     strategy:
-      max-parallel: 1 # For now, not to parallelize. Can change later if it works well.
       fail-fast: false
       matrix:
         machine_type: [single-gpu, multi-gpu]
