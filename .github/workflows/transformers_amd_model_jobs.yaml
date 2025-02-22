@@ -90,9 +90,6 @@ jobs:
         run: |
           python3 -m pip install --no-cache-dir git+https://github.com/huggingface/accelerate@main#egg=accelerate
 
-      - name: AMD-SMI
-        run: amd-smi list
-
       - name: ROCM-INFO
         run: |
           rocminfo  | grep "Agent" -A 14
