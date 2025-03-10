@@ -99,17 +99,6 @@ jobs:
         working-directory: /transformers
         run: git fetch && git checkout ${{ github.sha }}
 
-      - name: Cleanup
-        working-directory: /transformers
-        run: |
-          rm -rf tests/__pycache__
-          rm -rf tests/models/__pycache__
-          rm -rf reports
-
-      - name: Show installed libraries and their versions
-        working-directory: /transformers
-        run: pip freeze
-
       - id: set-matrix
         name: Identify models to test
         working-directory: /transformers/tests
@@ -125,9 +114,9 @@ jobs:
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
           echo "HIP:  $HIP_VISIBLE_DEVICES"
 
-      - name: Environment
+      - name: Debug
         working-directory: /transformers
-        run: python3 utils/print_env.py
+        run: bash debug.sh
 
   run_models_gpu:
     if: ${{ inputs.job == 'run_models_gpu' }}
@@ -190,21 +179,9 @@ jobs:
         working-directory: /transformers
         run: pip freeze
 
-      - name: Run all pipeline tests on GPU
+      - name: Debug
         working-directory: /transformers
-        run: python3 -m pytest -n 1 -v --dist=loadfile --make-reports=${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports tests/pipelines -m "not not_device_test"
-
-      - name: Failure short reports
-        if: ${{ failure() }}
-        continue-on-error: true
-        run: cat /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports/failures_short.txt
-
-      - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports"
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
-          path: /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
+        run: bash debug.sh
 
   run_examples_gpu:
     if: ${{ inputs.job == 'run_examples_gpu' }}
@@ -245,27 +222,9 @@ jobs:
         working-directory: /transformers
         run: python3 utils/print_env.py
 
-      - name: Show installed libraries and their versions
+      - name: Debug
         working-directory: /transformers
-        run: pip freeze
-
-      - name: Run examples tests on GPU
-        working-directory: /transformers
-        run: |
-          pip install -r examples/pytorch/_tests_requirements.txt
-          python3 -m pytest -v --make-reports=${{ matrix.machine_type }}_run_examples_gpu_test_reports examples/pytorch -m "not not_device_test"
-
-      - name: Failure short reports
-        if: ${{ failure() }}
-        continue-on-error: true
-        run: cat /transformers/reports/${{ matrix.machine_type }}_run_examples_gpu_test_reports/failures_short.txt
-
-      - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_examples_gpu_test_reports"
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.machine_type }}_run_examples_gpu_test_reports
-          path: /transformers/reports/${{ matrix.machine_type }}_run_examples_gpu_test_reports
+        run: bash debug.sh
 
   run_torch_cuda_extensions_gpu:
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
@@ -306,48 +265,6 @@ jobs:
         working-directory: /transformers
         run: python3 utils/print_env.py
 
-      - name: Show installed libraries and their versions
+      - name: Debug
         working-directory: /transformers
-        run: pip freeze
-
-      - name: Run all tests on GPU
-        working-directory: /transformers
-        run: python3 -m pytest -v --make-reports=${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports tests/deepspeed tests/extended -m "not not_device_test"
-
-      - name: Failure short reports
-        if: ${{ failure() }}
-        continue-on-error: true
-        run: cat /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports/failures_short.txt
-
-      - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
-          path: /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
-
-  send_results:
-    name: Slack Report
-    needs:
-      [
-        check_runner_status,
-        check_runners,
-        setup,
-        run_models_gpu,
-        run_pipelines_torch_gpu,
-        run_examples_gpu,
-        run_torch_cuda_extensions_gpu,
-      ]
-    if: ${{ always() }}
-    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
-    with:
-      job: ${{ inputs.job }}
-      # This would be `skipped` if `setup` is skipped.
-      setup_status: ${{ needs.setup.result }}
-      slack_report_channel: ${{ inputs.slack_report_channel }}
-      # This would be an empty string if `setup` is skipped.
-      folder_slices: ${{ needs.setup.outputs.folder_slices }}
-      quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
-      ci_event: ${{ inputs.ci_event }}
-
-    secrets: inherit
+        run: bash debug.sh
