@@ -18,6 +18,11 @@ on:
         required: true
         type: string
 
+      test_file:
+        description: "Test file to run (e.g. 'test_api.py')"
+        required: true
+        type: string
+
     secrets:
       HF_TOKEN:
         required: false
@@ -33,6 +38,7 @@ jobs:
         --group-add video
         --device /dev/kfd
         --device /dev/dri
+        --env HIP_VISIBLE_DEVICES
         --env ROCR_VISIBLE_DEVICES
 
     steps:
@@ -44,8 +50,8 @@ jobs:
           pip install -e .[${{ inputs.install_extras }}]
 
       - name: Run tests
+        run: |
+          pytest tests/${{ inputs.test_file }} -x -s -k "${{ inputs.pytest_keywords }}"
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
-        run: |
-          pytest tests/* -x -s -k "${{ inputs.pytest_keywords }}"
