@@ -49,7 +49,10 @@ jobs:
   check_runners:
     name: Check Runners
     needs: check_runner_status
-    runs-on: ${{ inputs.runner }}
+    strategy:
+      matrix:
+        machine_type: [1gpu]
+    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -66,7 +69,10 @@ jobs:
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
     needs: check_runners
-    runs-on: ${{ inputs.runner }}
+    strategy:
+      matrix:
+        machine_type: [1gpu]
+    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -115,8 +121,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [single-gpu]
-    runs-on: ${{ inputs.runner }}
+        machine_type: [1gpu]
+    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
     container:
       image: ${{ inputs.docker }}
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
