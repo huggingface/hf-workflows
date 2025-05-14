@@ -11,7 +11,7 @@ on:
         required: true
         type: string
       slack_report_channel:
-        required: false
+        required: true
         type: string
       runner:
         required: true
@@ -20,7 +20,7 @@ on:
         required: true
         type: string
       ci_event:
-        required: false
+        required: true
         type: string
 
 env:
@@ -46,13 +46,22 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Check Runner Status
+        run: python utils/check_self_hosted_runner.py --target_runners hf-amd-mi210-ci-1gpu-1,hf-amd-mi250-ci-1gpu-1,hf-amd-mi300-ci-1gpu-1 --token ${{ secrets.ACCESS_REPO_INFO_TOKEN }}
+
   check_runners:
     name: Check Runners
     needs: check_runner_status
     strategy:
       matrix:
-        machine_type: [1gpu]
-    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
+        machine_type: [single-gpu, multi-gpu]
+    runs-on:
+      [
+        "${{ matrix.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -71,8 +80,14 @@ jobs:
     needs: check_runners
     strategy:
       matrix:
-        machine_type: [1gpu]
-    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
+        machine_type: [single-gpu, multi-gpu]
+    runs-on:
+      [
+        "${{ matrix.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -114,6 +129,83 @@ jobs:
         working-directory: /transformers
         run: python3 utils/print_env.py
 
+  run_models_gpu:
+    if: ${{ inputs.job == 'run_models_gpu' }}
+    name: Single GPU tests
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [single-gpu, multi-gpu]
+        slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
+    uses: ./.github/workflows/transformers_amd_model_jobs.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      machine_type: ${{ matrix.machine_type }}
+      slice_id: ${{ matrix.slice_id }}
+      runner: ${{ inputs.runner }}
+      docker: ${{ inputs.docker }}
+    secrets: inherit
+
+  run_pipelines_torch_gpu:
+    if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
+    name: PyTorch pipelines
+    needs: check_runners
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [single-gpu, multi-gpu]
+    runs-on:
+      [
+        "${{ matrix.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
+    container:
+      image: ${{ inputs.docker }}
+      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        run: git fetch && git checkout ${{ github.sha }}
+
+      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
+        working-directory: /transformers
+        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+
+      - name: ROCM-INFO
+        run: rocminfo | grep "Agent" -A 14
+
+      - name: Show ROCR environment
+        run: |
+          echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          echo "HIP:  $HIP_VISIBLE_DEVICES"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - name: Run all pipeline tests on GPU
+        working-directory: /transformers
+        run: python3 -m pytest -n 1 -v --dist=loadfile --make-reports=${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports tests/pipelines -m "not not_device_test"
+
+      - name: Failure short reports
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: cat /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports/failures_short.txt
+
+      - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
+          path: /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
+
   run_examples_gpu:
     if: ${{ inputs.job == 'run_examples_gpu' }}
     name: Examples directory
@@ -121,8 +213,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu]
-    runs-on: ${{ inputs.runner }}-${{ matrix.machine_type }}-ossci
+        machine_type: [single-gpu]
+    runs-on:
+      [
+        "${{ matrix.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
     container:
       image: ${{ inputs.docker }}
       options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
@@ -169,3 +267,87 @@ jobs:
           name: ${{ matrix.machine_type }}_run_examples_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_examples_gpu_test_reports
 
+  run_torch_cuda_extensions_gpu:
+    if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
+    name: Torch ROCm deepspeed tests
+    needs: check_runners
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [single-gpu, multi-gpu]
+    runs-on:
+      [
+        "${{ matrix.machine_type }}",
+        self-hosted,
+        amd-gpu,
+        "${{ inputs.runner }}",
+      ]
+    container:
+      image: ${{ inputs.docker }}
+      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        run: git fetch && git checkout ${{ github.sha }}
+
+      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
+        working-directory: /transformers
+        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+
+      - name: ROCM-INFO
+        run: rocminfo | grep "Agent" -A 14
+
+      - name: Show ROCR environment
+        run: |
+          echo "ROCR: $ROCR_VISIBLE_DEVICES"
+          echo "HIP:  $HIP_VISIBLE_DEVICES"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - name: Run all tests on GPU
+        working-directory: /transformers
+        run: python3 -m pytest -v --make-reports=${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports tests/deepspeed tests/extended -m "not not_device_test"
+
+      - name: Failure short reports
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: cat /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports/failures_short.txt
+
+      - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
+          path: /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
+
+  send_results:
+    name: Slack Report
+    needs:
+      [
+        check_runner_status,
+        check_runners,
+        setup,
+        run_models_gpu,
+        run_pipelines_torch_gpu,
+        run_examples_gpu,
+        run_torch_cuda_extensions_gpu,
+      ]
+    if: ${{ always() }}
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
+    with:
+      job: ${{ inputs.job }}
+      # This would be `skipped` if `setup` is skipped.
+      setup_status: ${{ needs.setup.result }}
+      slack_report_channel: ${{ inputs.slack_report_channel }}
+      # This would be an empty string if `setup` is skipped.
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
+      ci_event: ${{ inputs.ci_event }}
+
+    secrets: inherit
