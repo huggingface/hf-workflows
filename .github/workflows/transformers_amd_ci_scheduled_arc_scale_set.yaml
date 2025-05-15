@@ -33,25 +33,15 @@ env:
   NUM_SLICES: 2
 
 jobs:
-  check_runner_status:
-    name: Check Runner Status
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout transformers
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
   check_runners:
     name: Check Runners
-    needs: check_runner_status
     strategy:
       matrix:
         machine_type: [1gpu, 2gpu]
     runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: huggingface/transformers-pytorch-amd-gpu
-      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
     steps:
       - name: ROCM-INFO
         run: rocminfo | grep "Agent" -A 14
@@ -293,7 +283,6 @@ jobs:
     name: Slack Report
     needs:
       [
-        check_runner_status,
         check_runners,
         setup,
         run_models_gpu,
