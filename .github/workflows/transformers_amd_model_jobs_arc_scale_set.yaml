@@ -102,6 +102,22 @@ jobs:
         working-directory: /transformers
         run: pip freeze
 
+      - name: Set `machine_type` for report and artifact names
+        working-directory: /transformers
+        shell: bash
+        run: |
+          echo "${{ inputs.machine_type }}"
+
+          if [ "${{ inputs.machine_type }}" = "1gpu" ]; then
+            machine_type=single-gpu
+          elif [ "${{ inputs.machine_type }}" = "2gpu" ]; then
+            machine_type=multi-gpu
+          else
+            machine_type=${{ inputs.machine_type }}
+          fi
+          echo "$machine_type"
+          echo "machine_type=$machine_type" >> $GITHUB_ENV
+
       - name: Run all tests on GPU
         working-directory: /transformers
         run: python3 -m pytest -rsfE -v --make-reports=${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports tests/${{ matrix.folders }}  -m "not not_device_test"
