@@ -44,7 +44,7 @@ jobs:
     runs-on: ${{ inputs.runner_scale_set }}-${{ inputs.machine_type }}
     container:
       image: ${{ inputs.docker }}
-      options: --device /dev/kfd --device /dev/dri --env ROCR_VISIBLE_DEVICES --env HIP_VISIBLE_DEVICES --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
+      options: --device /dev/kfd --device /dev/dri --env-file /etc/podinfo/gha-gpu-isolation-settings --shm-size "16gb" --ipc host -v /mnt/cache/.cache/huggingface:/mnt/cache/
     steps:
       - name: Echo input and matrix info
         shell: bash
