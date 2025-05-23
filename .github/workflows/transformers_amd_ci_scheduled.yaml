@@ -22,6 +22,9 @@ on:
       ci_event:
         required: true
         type: string
+      report_repo_id:
+        required: true
+        type: string
 
 env:
   HF_HOME: /mnt/cache
@@ -349,5 +352,20 @@ jobs:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
       ci_event: ${{ inputs.ci_event }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+
+    secrets: inherit
+
+  check_new_failures:
+    # TODO: work on `run_quantization_torch_gpu`
+    if: ${{ always() && inputs.job != 'run_quantization_torch_gpu' && needs.send_results.result == 'success' }}
+    name: Check new failures
+    needs: send_results
+    uses: huggingface/transformers/.github/workflows/check_failed_tests.yml@main
+    with:
+      docker: ${{ inputs.docker }}
+      start_sha: ${{ github.sha }}
+      job: ${{ inputs.job }}
+      report_repo_id: ${{ inputs.report_repo_id }}
 
     secrets: inherit
