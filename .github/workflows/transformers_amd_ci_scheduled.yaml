@@ -355,17 +355,3 @@ jobs:
       report_repo_id: ${{ inputs.report_repo_id }}
 
     secrets: inherit
-
-  check_new_failures:
-    # TODO: work on `run_quantization_torch_gpu`
-    if: ${{ always() && inputs.job != 'run_quantization_torch_gpu' && needs.send_results.result == 'success' }}
-    name: Check new failures
-    needs: send_results
-    uses: huggingface/transformers/.github/workflows/check_failed_tests.yml@main
-    with:
-      docker: ${{ inputs.docker }}
-      start_sha: ${{ github.sha }}
-      job: ${{ inputs.job }}
-      report_repo_id: ${{ inputs.report_repo_id }}
-
-    secrets: inherit
