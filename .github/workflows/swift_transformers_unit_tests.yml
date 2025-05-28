@@ -11,4 +11,6 @@ jobs:
     - name: Build
       run: swift build --vv --build-tests
     - name: Run tests
+      env:
+        CI_DISABLE_NETWORK_MONITOR: 1
       run: swift test --vv --skip-build
