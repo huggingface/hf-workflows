@@ -13,4 +13,5 @@ jobs:
     - name: Run tests
       env:
         CI_DISABLE_NETWORK_MONITOR: 1
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
       run: swift test --vv --skip-build
