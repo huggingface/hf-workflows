@@ -321,6 +321,24 @@ jobs:
           name: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
 
+  collated_reports:
+    name: Collated Reports
+    needs:
+      [
+        check_runners,
+        setup,
+        run_models_gpu,
+        run_pipelines_torch_gpu,
+        run_examples_gpu,
+        run_torch_cuda_extensions_gpu,
+      ]
+    if: ${{ always() }}
+    uses: huggingface/transformers/.github/workflows/collated_reports.yml@main
+    with:
+      job: ${{ inputs.job }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+    secrets: inherit
+
   send_results:
     name: Slack Report
     needs:
