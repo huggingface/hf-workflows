@@ -337,7 +337,7 @@ jobs:
       matrix:
         machine_type: [single-gpu, multi-gpu]
     if: ${{ always() }}
-    uses: huggingface/transformers/.github/workflows/collated_reports.yml@main
+    uses: huggingface/transformers/.github/workflows/collated-reports.yml@main
     with:
       job: ${{ inputs.job }}
       report_repo_id: ${{ inputs.report_repo_id }}
