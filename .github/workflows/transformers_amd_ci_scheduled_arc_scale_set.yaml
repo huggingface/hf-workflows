@@ -323,20 +323,12 @@ jobs:
 
   collated_reports:
     name: Collated Reports
-    needs:
-      [
-        check_runners,
-        setup,
-        run_models_gpu,
-        run_pipelines_torch_gpu,
-        run_examples_gpu,
-        run_torch_cuda_extensions_gpu,
-      ]
+    needs: [check_runners, setup, run_models_gpu]
+    if: ${{ inputs.job == 'run_models_gpu' }}
     strategy:
       fail-fast: false
       matrix:
         machine_type: [single-gpu, multi-gpu]
-    if: ${{ always() }}
     uses: huggingface/transformers/.github/workflows/collated-reports.yml@main
     with:
       job: ${{ inputs.job }}
