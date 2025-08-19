@@ -134,6 +134,7 @@ jobs:
       slice_id: ${{ matrix.slice_id }}
       runner_scale_set: ${{ inputs.runner_scale_set }}
       docker: ${{ inputs.docker }}
+      env_file: ${{ inputs.env_file }}
     secrets: inherit
 
   run_pipelines_torch_gpu:
