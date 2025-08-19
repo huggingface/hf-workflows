@@ -356,9 +356,9 @@ jobs:
           path: /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
 
   collated_reports:
-    name: Collated Reports
-    needs: [check_runners, setup, run_models_gpu]
     if: ${{ inputs.job == 'run_models_gpu' }}
+    name: Collated Reports
+    needs: run_models_gpu
     strategy:
       fail-fast: false
       matrix:
