@@ -135,6 +135,7 @@ jobs:
       runner_scale_set: ${{ inputs.runner_scale_set }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
+      report_repo_id: ${{ inputs.report_repo_id }}
     secrets: inherit
 
   run_pipelines_torch_gpu:
@@ -354,23 +355,6 @@ jobs:
         with:
           name: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
-
-  collated_reports:
-    if: ${{ inputs.job == 'run_models_gpu' }}
-    name: Collated Reports
-    needs: run_models_gpu
-    strategy:
-      fail-fast: false
-      matrix:
-        machine_type: [single-gpu, multi-gpu]
-    uses: huggingface/transformers/.github/workflows/collated-reports.yml@main
-    with:
-      job: ${{ inputs.job }}
-      report_repo_id: ${{ inputs.report_repo_id }}
-      gpu_name: ${{ inputs.runner_scale_set }}
-      machine_type: ${{ matrix.machine_type }}
-
-    secrets: inherit
 
   send_results:
     name: Slack Report
