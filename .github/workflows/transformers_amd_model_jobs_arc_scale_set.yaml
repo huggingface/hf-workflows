@@ -155,6 +155,7 @@ jobs:
 
   collated_reports:
     name: Collated Reports
+    if: ${{ always() }}
     needs: run_models_gpu
     uses: huggingface/transformers/.github/workflows/collated-reports.yml@main
     with:
