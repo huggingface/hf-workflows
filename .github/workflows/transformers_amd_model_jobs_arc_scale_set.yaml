@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        folders: ${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
+        folders: ["models/whisper"] #${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
     runs-on: ${{ inputs.runner_scale_set }}-${{ inputs.machine_type }}
     container:
       image: ${{ inputs.docker }}
