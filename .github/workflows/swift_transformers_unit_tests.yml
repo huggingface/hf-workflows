@@ -2,16 +2,35 @@ name: Swift Transformers Unit Tests
 
 on:
   workflow_call:
+    inputs:
+      pr_number:
+        description: "If set, test refs/pull/<pr_number>/merge"
+        type: number
+        required: false
+    secrets:
+      HF_HUB_READ_TOKEN:
+        required: true
 
 jobs:
   build-and-test:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build --vv --build-tests
-    - name: Run tests
-      env:
-        CI_DISABLE_NETWORK_MONITOR: 1
-        HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
-      run: swift test --vv --skip-build
+      - name: Checkout PR merge ref if called from PR
+        if: ${{ inputs.pr_number }}
+        uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ inputs.pr_number }}/merge
+          fetch-depth: 0
+
+      - name: Checkout fallback
+        if: ${{ !inputs.pr_number }}
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: swift build --vv --build-tests
+
+      - name: Run tests
+        env:
+          CI_DISABLE_NETWORK_MONITOR: 1
+          HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
+        run: swift test --vv --skip-build
