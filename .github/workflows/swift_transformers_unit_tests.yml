@@ -2,6 +2,9 @@ name: Swift Transformers Unit Tests
 
 on:
   workflow_call:
+    secrets:
+      HF_HUB_READ_TOKEN:
+        required: true
 
 jobs:
   build-and-test:
