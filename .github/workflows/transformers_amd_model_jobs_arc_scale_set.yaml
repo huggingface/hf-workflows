@@ -46,7 +46,8 @@ jobs:
       fail-fast: false
       matrix:
         folders: ${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
-    runs-on: ${{ inputs.runner_scale_set }}-${{ inputs.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ inputs.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
