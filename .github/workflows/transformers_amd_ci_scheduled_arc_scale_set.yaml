@@ -129,7 +129,7 @@ jobs:
       matrix:
         machine_type: [1gpu, 2gpu]
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
-    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml@devmi355
+    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
     with:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
