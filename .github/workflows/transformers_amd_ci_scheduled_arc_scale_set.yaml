@@ -44,7 +44,8 @@ jobs:
     strategy:
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: >-
@@ -70,7 +71,8 @@ jobs:
     strategy:
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: >-
@@ -127,7 +129,7 @@ jobs:
       matrix:
         machine_type: [1gpu, 2gpu]
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
-    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
+    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml@devmi355
     with:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
@@ -146,7 +148,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -218,7 +221,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -292,7 +296,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
