@@ -12,7 +12,7 @@ on:
       slice_id:
         required: true
         type: number
-      runner_scale_set:
+      runner_group:
         required: true
         type: string
       docker:
@@ -46,7 +46,8 @@ jobs:
       fail-fast: false
       matrix:
         folders: ${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
-    runs-on: ${{ inputs.runner_scale_set }}-${{ inputs.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ inputs.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -161,6 +162,6 @@ jobs:
     with:
       job: run_models_gpu
       report_repo_id: ${{ inputs.report_repo_id }}
-      gpu_name: ${{ inputs.runner_scale_set }}
+      gpu_name: ${{ inputs.runner_group }}
       machine_type: ${{ inputs.machine_type == '1gpu' && 'single-gpu' || 'multi-gpu' }}
     secrets: inherit

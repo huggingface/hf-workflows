@@ -12,7 +12,7 @@ on:
       slack_report_channel:
         required: true
         type: string
-      runner_scale_set:
+      runner_group:
         required: true
         type: string
       docker:
@@ -44,7 +44,8 @@ jobs:
     strategy:
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: >-
@@ -70,7 +71,8 @@ jobs:
     strategy:
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: huggingface/transformers-pytorch-amd-gpu
       options: >-
@@ -132,7 +134,7 @@ jobs:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
       slice_id: ${{ matrix.slice_id }}
-      runner_scale_set: ${{ inputs.runner_scale_set }}
+      runner_scale_set: ${{ inputs.runner_group }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
@@ -146,7 +148,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -218,7 +221,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -292,7 +296,8 @@ jobs:
       fail-fast: false
       matrix:
         machine_type: [1gpu, 2gpu]
-    runs-on: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+    runs-on: 
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
