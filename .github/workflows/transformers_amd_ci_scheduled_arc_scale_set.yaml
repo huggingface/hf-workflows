@@ -134,7 +134,7 @@ jobs:
       folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
       slice_id: ${{ matrix.slice_id }}
-      runner_scale_set: ${{ inputs.runner_group }}
+      runner_group: ${{ inputs.runner_group }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
