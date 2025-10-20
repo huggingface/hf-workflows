@@ -47,7 +47,7 @@ jobs:
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
-      image: huggingface/transformers-pytorch-amd-gpu
+      image: ${{ inputs.docker }}
       options: >-
         --device /dev/kfd
         --device /dev/dri
@@ -74,7 +74,7 @@ jobs:
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
-      image: huggingface/transformers-pytorch-amd-gpu
+      image: ${{ inputs.docker }}
       options: >-
         --device /dev/kfd
         --device /dev/dri
