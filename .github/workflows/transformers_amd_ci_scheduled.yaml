@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout transformers
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 2
 
@@ -204,7 +204,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
@@ -265,7 +265,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_examples_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: ${{ matrix.machine_type }}_run_examples_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_examples_gpu_test_reports
@@ -324,7 +324,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
@@ -342,7 +342,7 @@ jobs:
         run_torch_cuda_extensions_gpu,
       ]
     if: ${{ always() }}
-    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@6abd9725ee7d809dc974991f8ff6c958afb63a3a  # main
     with:
       job: ${{ inputs.job }}
       # This would be `skipped` if `setup` is skipped.
