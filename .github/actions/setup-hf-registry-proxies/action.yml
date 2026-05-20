@@ -1,12 +1,5 @@
 name: Setup HF registry proxies
-description: >-
-  Configure cargo, pip, uv, npm/pnpm, yarn classic, conda/mamba, and go on
-  the current job to fetch from HuggingFace's internal caching proxies,
-  which hold back package versions younger than 3 days to defend against
-  supply-chain attacks. Each tool is configured only if its binary is
-  present on the runner. Must run on a self-hosted in-VPC runner (e.g.
-  `aws-general-8-plus`); the proxy ALBs are `scheme: internal` and are
-  unreachable from GitHub-hosted runners.
+description: Point the current job at HuggingFace's internal package registry proxies. Requires an in-VPC self-hosted runner.
 author: Hugging Face
 
 runs:
