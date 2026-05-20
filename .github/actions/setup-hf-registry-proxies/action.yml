@@ -1,0 +1,10 @@
+name: Setup HF registry proxies
+description: Point the current job at HuggingFace's internal package registry proxies. Requires an in-VPC self-hosted runner.
+author: Hugging Face
+
+runs:
+  using: composite
+  steps:
+    - name: Run HF registry proxy setup script
+      shell: bash
+      run: bash "${GITHUB_ACTION_PATH}/setup.sh"
