@@ -5,6 +5,7 @@ on:
     branches:
       - test/amd-mi300-runners
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   test_1gpu:
