@@ -1,10 +1,6 @@
 name: Test AMD MI300 Runner Groups
 
 on:
-  push:
-    branches:
-      - test/amd-mi300-runners
-  workflow_dispatch:
   workflow_call:
 
 jobs:
