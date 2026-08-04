@@ -1,0 +1,36 @@
+name: Test AMD MI300 Runner Groups
+
+on:
+  push:
+    branches:
+      - test/amd-mi300-runners
+  workflow_dispatch:
+
+jobs:
+  test_1gpu:
+    name: Test hfc-amd-mi300-1gpu
+    runs-on:
+      group: hfc-amd-mi300-1gpu
+    container:
+      image: huggingface/transformers-pytorch-amd-gpu
+      options: --device /dev/kfd --device /dev/dri --shm-size "16gb" --ipc host
+    steps:
+      - name: Hello World
+        run: echo "hello world!"
+
+      - name: ROCM-SMI
+        run: rocm-smi
+
+  test_2gpu:
+    name: Test hfc-amd-mi300-2gpu
+    runs-on:
+      group: hfc-amd-mi300-2gpu
+    container:
+      image: huggingface/transformers-pytorch-amd-gpu
+      options: --device /dev/kfd --device /dev/dri --shm-size "16gb" --ipc host
+    steps:
+      - name: Hello World
+        run: echo "hello world!"
+
+      - name: ROCM-SMI
+        run: rocm-smi
