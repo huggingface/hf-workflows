@@ -60,7 +60,7 @@ jobs:
     name: Check Runners
     strategy:
       matrix:
-        machine_type: [1gpu, 2gpu]
+        machine_type: [1gpu]
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
@@ -87,7 +87,7 @@ jobs:
     needs: check_runners
     strategy:
       matrix:
-        machine_type: [1gpu, 2gpu]
+        machine_type: [1gpu]
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
@@ -149,7 +149,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
+        machine_type: [1gpu]
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
     uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
     with:
@@ -171,7 +171,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
+        machine_type: [1gpu]
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
@@ -319,7 +319,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
+        machine_type: [1gpu]
     runs-on: 
       group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
