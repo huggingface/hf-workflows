@@ -416,7 +416,7 @@ jobs:
     if: ${{ always() && needs.send_results.result == 'success' }}
     name: Check new failures
     needs: send_results
-    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@main
+    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@pr-ci-amd
     with:
       docker: ${{ inputs.docker }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
