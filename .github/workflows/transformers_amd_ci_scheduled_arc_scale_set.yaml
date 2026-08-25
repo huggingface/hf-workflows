@@ -144,7 +144,7 @@ jobs:
 
   upload_additional_artifact:
     name: Upload additional artifact
-    if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
+    if: false  # temporarily disabled to verify it's needed
     runs-on: ubuntu-22.04
     steps:
       - name: Upload dummy artifact
