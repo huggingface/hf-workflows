@@ -142,18 +142,6 @@ jobs:
         working-directory: /transformers
         run: python3 utils/print_env.py
 
-  upload_additional_artifact:
-    name: Upload additional artifact
-    if: false  # temporarily disabled to verify it's needed
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Upload dummy artifact
-        run: mkdir dummy_artifact && echo "placeholder" > dummy_artifact/placeholder.txt
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-        with:
-          name: dummy_artifact
-          path: dummy_artifact
-
   run_models_gpu:
     if: ${{ inputs.job == 'run_models_gpu' }}
     name: Single GPU tests
@@ -403,7 +391,6 @@ jobs:
       [
         check_runners,
         setup,
-        upload_additional_artifact,
         run_models_gpu,
         run_pipelines_torch_gpu,
         run_examples_gpu,
