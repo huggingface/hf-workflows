@@ -127,8 +127,8 @@ jobs:
         env:
           subdirs: ${{ inputs.subdirs }}
         run: |
-          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits ${{ env.NUM_SLICES }})" >> $GITHUB_OUTPUT
-          echo "slice_ids=$(python3 -c 'd = list(range(${{ env.NUM_SLICES }})); print(d)')" >> $GITHUB_OUTPUT
+          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
+          echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
 
       - name: ROCM-INFO
         run: rocminfo | grep "Agent" -A 14
