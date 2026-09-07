@@ -27,6 +27,23 @@ on:
       env_file:
         required: false
         type: string
+      commit_sha:
+        required: false
+        type: string
+      subdirs:
+        required: false
+        default: ""
+        type: string
+      pytest_marker:
+        required: false
+        type: string
+      pr_number:
+        required: false
+        type: string
+    outputs:
+      is_infrastructure_ok:
+        description: "Whether the CI infrastructure (slack reporting and failure checking) succeeded"
+        value: ${{ jobs.send_results.outputs.is_slack_reporting_job_ok == 'true' && jobs.check_new_failures.outputs.is_check_failures_ok == 'true' }}
 
 env:
   HF_HOME: /mnt/cache
@@ -88,7 +105,10 @@ jobs:
     steps:
       - name: Update clone
         working-directory: /transformers
-        run: git fetch && git checkout ${{ github.sha }}
+        env:
+          commit_sha: ${{ inputs.commit_sha || github.sha }}
+        run: |
+          git fetch origin "$commit_sha" && git checkout "$commit_sha"
 
       - name: Cleanup
         working-directory: /transformers
@@ -104,9 +124,11 @@ jobs:
       - id: set-matrix
         name: Identify models to test
         working-directory: /transformers/tests
+        env:
+          subdirs: ${{ inputs.subdirs }}
         run: |
-          echo "folder_slices=$(python3 ../utils/split_model_tests.py --num_splits ${{ env.NUM_SLICES }})" >> $GITHUB_OUTPUT
-          echo "slice_ids=$(python3 -c 'd = list(range(${{ env.NUM_SLICES }})); print(d)')" >> $GITHUB_OUTPUT
+          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
+          echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
 
       - name: ROCM-INFO
         run: rocminfo | grep "Agent" -A 14
@@ -138,6 +160,8 @@ jobs:
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
     secrets: inherit
 
   run_pipelines_torch_gpu:
@@ -384,5 +408,23 @@ jobs:
       quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
       ci_event: ${{ inputs.ci_event }}
       report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
 
+    secrets: inherit
+
+  check_new_failures:
+    if: ${{ always() && needs.send_results.result == 'success' }}
+    name: Check new failures
+    needs: send_results
+    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@main
+    with:
+      docker: ${{ inputs.docker }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      job: ${{ inputs.job }}
+      slack_report_channel: ${{ inputs.slack_report_channel }}
+      ci_event: ${{ inputs.ci_event }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      pr_number: ${{ inputs.pr_number }}
+      runner_group: ${{ inputs.runner_group }}
+      env_file: ${{ inputs.env_file }}
     secrets: inherit
