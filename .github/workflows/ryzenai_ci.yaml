@@ -37,7 +37,7 @@ jobs:
       fail-fast: false
     runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
     - name: Create and start a virtual environment
       run: |
         conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.1-ci
@@ -89,7 +89,7 @@ jobs:
       run: cat reports\$env:REPORT_NAME\failures_short.txt
     - name: "Test suite reports artifacts"
       if: ${{ always() && inputs.report_name != '' }}
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v7
       with:
         name: run_${{ inputs.report_name}}
         path: .\reports\${{ inputs.report_name}}\
