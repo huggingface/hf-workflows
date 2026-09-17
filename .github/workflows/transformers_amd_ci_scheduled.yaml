@@ -41,6 +41,8 @@ env:
 # runners for the push CI that is running on the same machine.
 jobs:
   check_runner_status:
+    permissions:
+      contents: read
     name: Check Runner Status
     runs-on: ubuntu-22.04
     steps:
@@ -53,6 +55,7 @@ jobs:
         run: python utils/check_self_hosted_runner.py --target_runners hf-amd-mi210-ci-1gpu-1,hf-amd-mi250-ci-1gpu-1,hf-amd-mi300-ci-1gpu-1 --token ${{ secrets.ACCESS_REPO_INFO_TOKEN }}
 
   check_runners:
+    permissions: {}
     name: Check Runners
     needs: check_runner_status
     strategy:
@@ -78,6 +81,8 @@ jobs:
           echo "HIP:  $HIP_VISIBLE_DEVICES"
 
   setup:
+    permissions:
+      contents: read
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
     needs: check_runners
@@ -151,6 +156,8 @@ jobs:
     secrets: inherit
 
   run_pipelines_torch_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
     name: PyTorch pipelines
     needs: check_runners
@@ -210,6 +217,8 @@ jobs:
           path: /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
 
   run_examples_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_examples_gpu' }}
     name: Examples directory
     needs: check_runners
@@ -271,6 +280,8 @@ jobs:
           path: /transformers/reports/${{ matrix.machine_type }}_run_examples_gpu_test_reports
 
   run_torch_cuda_extensions_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
     name: Torch ROCm deepspeed tests
     needs: check_runners

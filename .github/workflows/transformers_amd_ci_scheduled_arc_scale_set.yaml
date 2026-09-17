@@ -57,6 +57,7 @@ env:
 
 jobs:
   check_runners:
+    permissions: {}
     name: Check Runners
     strategy:
       matrix:
@@ -82,6 +83,8 @@ jobs:
           echo "HIP:  $HIP_VISIBLE_DEVICES"
 
   setup:
+    permissions:
+      contents: read
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
     needs: check_runners
@@ -165,6 +168,8 @@ jobs:
     secrets: inherit
 
   run_pipelines_torch_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
     name: PyTorch pipelines
     needs: check_runners
@@ -232,12 +237,14 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
 
   run_examples_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_examples_gpu' }}
     name: Examples directory
     needs: check_runners
@@ -307,12 +314,14 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_examples_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ env.machine_type }}_run_examples_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports
 
   run_torch_cuda_extensions_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
     name: Torch ROCm deepspeed tests
     needs: check_runners
@@ -380,7 +389,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports

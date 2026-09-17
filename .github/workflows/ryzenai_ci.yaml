@@ -30,14 +30,18 @@ on:
     secrets:
       hf_hub_read_token:
         required: false
+permissions: {}
+
 jobs:
   build:
+    permissions:
+      contents: read
     timeout-minutes: ${{ inputs.timeout_minutes }}
     strategy:
       fail-fast: false
     runs-on: [self-hosted, single-npu, amd-npu, ryzenai]
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     - name: Create and start a virtual environment
       run: |
         conda create --prefix venv --clone C:\tools\Anaconda3\envs\ryzenai-1.1-ci
@@ -89,7 +93,7 @@ jobs:
       run: cat reports\$env:REPORT_NAME\failures_short.txt
     - name: "Test suite reports artifacts"
       if: ${{ always() && inputs.report_name != '' }}
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: run_${{ inputs.report_name}}
         path: .\reports\${{ inputs.report_name}}\
