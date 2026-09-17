@@ -22,8 +22,12 @@ on:
       HF_TOKEN:
         required: false
 
+permissions: {}
+
 jobs:
   build:
+    permissions:
+      contents: read
     runs-on: [self-hosted, amd-gpu, mi250, "${{ inputs.machine_type }}"]
 
     container:
@@ -40,12 +44,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Install dependencies
+        env:
+          INSTALL_EXTRAS: ${{ inputs.install_extras }}
         run: |
-          pip install -e .[${{ inputs.install_extras }}]
+          pip install -e .["$INSTALL_EXTRAS"]
 
       - name: Run tests
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           PUSH_REPO_ID: optimum-benchmark/rocm
+          PYTEST_KEYWORDS: ${{ inputs.pytest_keywords }}
         run: |
-          pytest tests/* -x -s -k "${{ inputs.pytest_keywords }}"
+          pytest tests/* -x -s -k "$PYTEST_KEYWORDS"
