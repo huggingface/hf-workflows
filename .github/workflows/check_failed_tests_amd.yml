@@ -121,9 +121,7 @@ jobs:
 
   check_new_failures:
     permissions:
-      actions: read
       contents: read
-      pull-requests: read
     name: "Find commits for new failing tests"
     needs: setup_check_new_failures
     if: needs.setup_check_new_failures.outputs.process == 'true'
@@ -279,7 +277,6 @@ jobs:
 
   process_new_failures_with_commit_info:
     permissions:
-      actions: read
       contents: read
     name: "process bad commit reports"
     needs: check_new_failures
