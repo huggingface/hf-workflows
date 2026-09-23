@@ -3,8 +3,11 @@ name: Test AMD MI300 Runner Groups
 on:
   workflow_call:
 
+permissions: {}
+
 jobs:
   test_1gpu:
+    permissions: {}
     name: Test hfc-amd-mi300-1gpu
     runs-on:
       group: hfc-amd-mi300-1gpu
@@ -19,6 +22,7 @@ jobs:
         run: rocm-smi
 
   test_2gpu:
+    permissions: {}
     name: Test hfc-amd-mi300-2gpu
     runs-on:
       group: hfc-amd-mi300-2gpu

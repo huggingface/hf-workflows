@@ -57,6 +57,7 @@ env:
 
 jobs:
   check_runners:
+    permissions: {}
     name: Check Runners
     strategy:
       matrix:
@@ -82,6 +83,8 @@ jobs:
           echo "HIP:  $HIP_VISIBLE_DEVICES"
 
   setup:
+    permissions:
+      contents: read
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
     needs: check_runners
@@ -165,6 +168,8 @@ jobs:
     secrets: inherit
 
   run_pipelines_torch_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
     name: PyTorch pipelines
     needs: check_runners
@@ -238,6 +243,8 @@ jobs:
           path: /transformers/reports/${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
 
   run_examples_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_examples_gpu' }}
     name: Examples directory
     needs: check_runners
@@ -313,6 +320,8 @@ jobs:
           path: /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports
 
   run_torch_cuda_extensions_gpu:
+    permissions:
+      contents: read
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
     name: Torch ROCm deepspeed tests
     needs: check_runners

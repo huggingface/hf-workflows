@@ -33,8 +33,12 @@ env:
   RUN_PT_TF_CROSS_TESTS: 1
   CUDA_VISIBLE_DEVICES: 0,1
 
+permissions: {}
+
 jobs:
   run_models_gpu:
+    permissions:
+      contents: read
     name: " "
     strategy:
       fail-fast: false

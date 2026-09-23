@@ -22,8 +22,12 @@ on:
       HF_TOKEN:
         required: false
 
+permissions: {}
+
 jobs:
   build:
+    permissions:
+      contents: read
     runs-on: [self-hosted, amd-gpu, mi250, "${{ inputs.machine_type }}"]
 
     container:

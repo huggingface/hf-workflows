@@ -51,6 +51,8 @@ env:
 
 jobs:
   run_models_gpu:
+    permissions:
+      contents: read
     name: " "
     strategy:
       fail-fast: false

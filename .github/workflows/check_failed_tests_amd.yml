@@ -49,11 +49,12 @@ env:
   # This token is created under the bot `hf-transformers-bot`.
   HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
 
-permissions:
-  contents: read
+
+permissions: {}
 
 jobs:
   setup_check_new_failures:
+    permissions: {}
     name: "Setup matrix for finding commits"
     runs-on: ubuntu-22.04
     outputs:
@@ -119,6 +120,10 @@ jobs:
 
 
   check_new_failures:
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
     name: "Find commits for new failing tests"
     needs: setup_check_new_failures
     if: needs.setup_check_new_failures.outputs.process == 'true'
@@ -273,6 +278,9 @@ jobs:
           path: /transformers/new_failures_with_bad_commit_${{ inputs.job }}_${{ matrix.run_idx }}.json
 
   process_new_failures_with_commit_info:
+    permissions:
+      actions: read
+      contents: read
     name: "process bad commit reports"
     needs: check_new_failures
     if: needs.check_new_failures.outputs.process == 'true'
