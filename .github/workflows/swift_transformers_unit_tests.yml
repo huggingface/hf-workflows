@@ -11,8 +11,12 @@ on:
       HF_HUB_READ_TOKEN:
         required: true
 
+permissions: {}
+
 jobs:
   build-and-test:
+    permissions:
+      contents: read
     runs-on: macos-latest
     steps:
       - name: Checkout PR merge ref if called from PR

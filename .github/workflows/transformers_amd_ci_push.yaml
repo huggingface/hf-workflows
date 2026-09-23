@@ -19,8 +19,12 @@ env:
   RUN_PT_TF_CROSS_TESTS: 1
   HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
 
+permissions: {}
+
 jobs:
   check_runner_status:
+    permissions:
+      contents: read
     name: Check Runner Status
     runs-on: ubuntu-22.04
     steps:
@@ -33,6 +37,7 @@ jobs:
         run: python utils/check_self_hosted_runner.py --target_runners amd-mi210-single-gpu-ci-runner-docker --token ${{ secrets.ACCESS_REPO_INFO_TOKEN }}
 
   check_runners:
+    permissions: {}
     name: Check Runners
     needs: check_runner_status
     strategy:
@@ -54,6 +59,8 @@ jobs:
           echo "ROCR: $ROCR_VISIBLE_DEVICES"
 
   setup_gpu:
+    permissions:
+      contents: read
     name: Setup
     needs: check_runners
     strategy:
@@ -151,6 +158,8 @@ jobs:
           echo "test_map=$test_map" >> $GITHUB_OUTPUT
 
   run_models_gpu:
+    permissions:
+      contents: read
     name: Model tests
     needs: setup_gpu
     # `dummy` means there is no test to run
@@ -252,6 +261,9 @@ jobs:
           path: /transformers/reports/${{ matrix.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports
 
   send_results:
+    permissions:
+      actions: read
+      contents: read
     name: Send results to webhook
     runs-on: ubuntu-22.04
     if: always()

@@ -30,8 +30,12 @@ on:
     secrets:
       hf_hub_read_token:
         required: false
+permissions: {}
+
 jobs:
   build:
+    permissions:
+      contents: read
     timeout-minutes: ${{ inputs.timeout_minutes }}
     strategy:
       fail-fast: false
