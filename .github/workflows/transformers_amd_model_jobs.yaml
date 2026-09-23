@@ -57,25 +57,33 @@ jobs:
     steps:
       - name: Echo input and matrix info
         shell: bash
+        env:
+          FOLDER_SLICES: ${{ inputs.folder_slices }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
+          SLICE_FOLDERS: ${{ toJson(fromJson(inputs.folder_slices)[inputs.slice_id]) }}
         run: |
-          echo "${{ inputs.folder_slices }}"
-          echo "${{ matrix.folders }}"
-          echo "${{ toJson(fromJson(inputs.folder_slices)[inputs.slice_id]) }}"
+          echo "$FOLDER_SLICES"
+          echo "$MATRIX_FOLDERS"
+          echo "$SLICE_FOLDERS"
 
       - name: Echo folder ${{ matrix.folders }}
         shell: bash
         # For folders like `models/bert`, set an env. var. (`matrix_folders`) to `models_bert`, which will be used to
         # set the artifact folder names (because the character `/` is not allowed).
+        env:
+          MATRIX_FOLDERS: ${{ matrix.folders }}
         run: |
-          echo "${{ matrix.folders }}"
-          matrix_folders=${{ matrix.folders }}
+          echo "$MATRIX_FOLDERS"
+          matrix_folders="$MATRIX_FOLDERS"
           matrix_folders=${matrix_folders/'models/'/'models_'}
           echo "$matrix_folders"
           echo "matrix_folders=$matrix_folders" >> $GITHUB_ENV
 
       - name: Update clone
         working-directory: /transformers
-        run: git fetch && git checkout ${{ github.sha }}
+        env:
+          TARGET_SHA: ${{ github.sha }}
+        run: git fetch && git checkout "$TARGET_SHA"
 
       - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
         working-directory: /transformers
@@ -113,19 +121,28 @@ jobs:
 
       - name: Run all tests on GPU
         working-directory: /transformers
-        run: python3 -m pytest -rsfE -v --make-reports=${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports tests/${{ matrix.folders }}  -m "not not_device_test"
+        env:
+          MACHINE_TYPE: ${{ inputs.machine_type }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
+        run: python3 -m pytest -rsfE -v --make-reports="${MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports" "tests/${MATRIX_FOLDERS}" -m "not not_device_test"
 
       - name: Failure short reports
         if: ${{ failure() }}
         continue-on-error: true
-        run: cat /transformers/reports/${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports/failures_short.txt
+        env:
+          MACHINE_TYPE: ${{ inputs.machine_type }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
+        run: cat "/transformers/reports/${MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports/failures_short.txt"
 
       - name: Run test
         shell: bash
+        env:
+          MACHINE_TYPE: ${{ inputs.machine_type }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
         run: |
-          mkdir -p /transformers/reports/${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports
-          echo "hello" > /transformers/reports/${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports/hello.txt
-          echo "${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports"
+          mkdir -p "/transformers/reports/${MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports"
+          echo "hello" > "/transformers/reports/${MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports/hello.txt"
+          echo "${MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports"
 
       - name: "Test suite reports artifacts: ${{ inputs.machine_type }}_run_models_gpu_${{ env.matrix_folders }}_test_reports"
         if: ${{ always() }}
