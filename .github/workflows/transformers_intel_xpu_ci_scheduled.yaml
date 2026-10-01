@@ -1,0 +1,454 @@
+name: Self-hosted runner scale set (scheduled-intel-xpu)
+
+# Note: For the Intel XPU CI, we rely on a caller workflow and on the workflow_call event to trigger the CI
+# ref: https://github.com/huggingface/transformers/blob/main/.github/workflows/self-scheduled-intel-xpu-caller.yml
+
+on:
+  workflow_call:
+    inputs:
+      job:
+        required: true
+        type: string
+      slack_report_channel:
+        required: true
+        type: string
+      runner_group:
+        required: true
+        type: string
+      docker:
+        required: true
+        type: string
+      ci_event:
+        required: true
+        type: string
+      report_repo_id:
+        required: true
+        type: string
+      env_file:
+        required: false
+        type: string
+      commit_sha:
+        required: false
+        type: string
+      subdirs:
+        required: false
+        default: ""
+        type: string
+      pytest_marker:
+        required: false
+        type: string
+      pr_number:
+        required: false
+        type: string
+    outputs:
+      is_infrastructure_ok:
+        description: "Whether the CI infrastructure (slack reporting and failure checking) succeeded"
+        value: ${{ jobs.send_results.outputs.is_slack_reporting_job_ok == 'true' && jobs.check_new_failures.outputs.is_check_failures_ok == 'true' }}
+
+env:
+  HF_HOME: /mnt/cache
+  TRANSFORMERS_IS_CI: yes
+  OMP_NUM_THREADS: 8
+  MKL_NUM_THREADS: 8
+  RUN_SLOW: yes
+  HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
+  SIGOPT_API_TOKEN: ${{ secrets.SIGOPT_API_TOKEN }}
+  NUM_SLICES: 4
+
+jobs:
+  check_runners:
+    permissions: {}
+    name: Check Runners
+    strategy:
+      matrix:
+        machine_type: [1gpu, 2gpu]
+    runs-on:
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --shm-size "8g"
+        --privileged
+        --network host
+        -v /dev/dri/by-path:/dev/dri/by-path
+        --device /dev/dri:/dev/dri
+        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
+    steps:
+      - name: XPU-INFO
+        run: |
+          sycl-ls || true
+          xpu-smi || true
+
+      - name: Show XPU environment
+        run: |
+          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
+          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
+
+  setup:
+    permissions:
+      contents: read
+    if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
+    name: Setup
+    needs: check_runners
+    strategy:
+      matrix:
+        machine_type: [1gpu, 2gpu]
+    runs-on:
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --shm-size "8g"
+        --privileged
+        --network host
+        -v /dev/dri/by-path:/dev/dri/by-path
+        --device /dev/dri:/dev/dri
+        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
+    outputs:
+      folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
+      slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        env:
+          commit_sha: ${{ inputs.commit_sha || github.sha }}
+        run: |
+          git fetch origin "$commit_sha" && git checkout "$commit_sha"
+
+      - name: Cleanup
+        working-directory: /transformers
+        run: |
+          rm -rf tests/__pycache__
+          rm -rf tests/models/__pycache__
+          rm -rf reports
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - id: set-matrix
+        name: Identify models to test
+        working-directory: /transformers/tests
+        env:
+          subdirs: ${{ inputs.subdirs }}
+        run: |
+          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
+          echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
+
+      - name: XPU-INFO
+        run: |
+          sycl-ls || true
+          xpu-smi || true
+
+      - name: Show XPU environment
+        run: |
+          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
+          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+  run_models_gpu:
+    if: ${{ inputs.job == 'run_models_gpu' }}
+    name: Single GPU tests
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [1gpu, 2gpu]
+        slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
+    uses: ./.github/workflows/transformers_intel_xpu_model_jobs_arc_scale_set.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      machine_type: ${{ matrix.machine_type }}
+      slice_id: ${{ matrix.slice_id }}
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      env_file: ${{ inputs.env_file }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_pipelines_torch_gpu:
+    permissions:
+      contents: read
+    if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
+    name: PyTorch pipelines
+    needs: check_runners
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [1gpu, 2gpu]
+    runs-on:
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --shm-size "8g"
+        --privileged
+        --network host
+        -v /dev/dri/by-path:/dev/dri/by-path
+        --device /dev/dri:/dev/dri
+        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        run: git fetch && git checkout ${{ github.sha }}
+
+      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
+        working-directory: /transformers
+        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+
+      - name: XPU-INFO
+        run: |
+          sycl-ls || true
+          xpu-smi || true
+
+      - name: Show XPU environment
+        run: |
+          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
+          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - name: Set `machine_type` for report and artifact names
+        working-directory: /transformers
+        shell: bash
+        run: |
+          if [ "${{ matrix.machine_type }}" = "1gpu" ]; then
+            machine_type=single-gpu
+          elif [ "${{ matrix.machine_type }}" = "2gpu" ]; then
+            machine_type=multi-gpu
+          else
+            machine_type=${{ matrix.machine_type }}
+          fi
+          echo "machine_type=$machine_type" >> $GITHUB_ENV
+
+      - name: Run all pipeline tests on GPU
+        working-directory: /transformers
+        run: python3 -m pytest -n 1 -v --dist=loadfile --make-reports=${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports tests/pipelines -m "not not_device_test"
+
+      - name: Failure short reports
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: cat /transformers/reports/${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports/failures_short.txt
+
+      - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
+          path: /transformers/reports/${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
+
+  run_examples_gpu:
+    permissions:
+      contents: read
+    if: ${{ inputs.job == 'run_examples_gpu' }}
+    name: Examples directory
+    needs: check_runners
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [1gpu]
+    runs-on:
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --shm-size "8g"
+        --privileged
+        --network host
+        -v /dev/dri/by-path:/dev/dri/by-path
+        --device /dev/dri:/dev/dri
+        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        run: git fetch && git checkout ${{ github.sha }}
+
+      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
+        working-directory: /transformers
+        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+
+      - name: XPU-INFO
+        run: |
+          sycl-ls || true
+          xpu-smi || true
+
+      - name: Show XPU environment
+        run: |
+          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
+          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - name: Set `machine_type` for report and artifact names
+        working-directory: /transformers
+        shell: bash
+        run: |
+          if [ "${{ matrix.machine_type }}" = "1gpu" ]; then
+            machine_type=single-gpu
+          elif [ "${{ matrix.machine_type }}" = "2gpu" ]; then
+            machine_type=multi-gpu
+          else
+            machine_type=${{ matrix.machine_type }}
+          fi
+          echo "machine_type=$machine_type" >> $GITHUB_ENV
+
+      - name: Run examples tests on GPU
+        working-directory: /transformers
+        run: |
+          pip install -r examples/pytorch/_tests_requirements.txt
+          python3 -m pytest -v --make-reports=${{ env.machine_type }}_run_examples_gpu_test_reports examples/pytorch -m "not not_device_test"
+
+      - name: Failure short reports
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: cat /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports/failures_short.txt
+
+      - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_examples_gpu_test_reports"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ env.machine_type }}_run_examples_gpu_test_reports
+          path: /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports
+
+  run_torch_cuda_extensions_gpu:
+    permissions:
+      contents: read
+    if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
+    name: Torch XPU deepspeed tests
+    needs: check_runners
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [1gpu, 2gpu]
+    runs-on:
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --shm-size "8g"
+        --privileged
+        --network host
+        -v /dev/dri/by-path:/dev/dri/by-path
+        --device /dev/dri:/dev/dri
+        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
+    steps:
+      - name: Update clone
+        working-directory: /transformers
+        run: git fetch && git checkout ${{ github.sha }}
+
+      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
+        working-directory: /transformers
+        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+
+      - name: XPU-INFO
+        run: |
+          sycl-ls || true
+          xpu-smi || true
+
+      - name: Show XPU environment
+        run: |
+          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
+          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
+
+      - name: Environment
+        working-directory: /transformers
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        working-directory: /transformers
+        run: pip freeze
+
+      - name: Set `machine_type` for report and artifact names
+        working-directory: /transformers
+        shell: bash
+        run: |
+          if [ "${{ matrix.machine_type }}" = "1gpu" ]; then
+            machine_type=single-gpu
+          elif [ "${{ matrix.machine_type }}" = "2gpu" ]; then
+            machine_type=multi-gpu
+          else
+            machine_type=${{ matrix.machine_type }}
+          fi
+          echo "machine_type=$machine_type" >> $GITHUB_ENV
+
+      - name: Run all tests on GPU
+        working-directory: /transformers
+        run: python3 -m pytest -v --make-reports=${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports tests/deepspeed tests/extended -m "not not_device_test"
+
+      - name: Failure short reports
+        if: ${{ failure() }}
+        continue-on-error: true
+        run: cat /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports/failures_short.txt
+
+      - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
+          path: /transformers/reports/${{ env.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
+
+  send_results:
+    name: Slack Report
+    needs:
+      [
+        check_runners,
+        setup,
+        run_models_gpu,
+        run_pipelines_torch_gpu,
+        run_examples_gpu,
+        run_torch_cuda_extensions_gpu,
+      ]
+    if: ${{ always() }}
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
+    with:
+      job: ${{ inputs.job }}
+      # This would be `skipped` if `setup` is skipped.
+      setup_status: ${{ needs.setup.result }}
+      slack_report_channel: ${{ inputs.slack_report_channel }}
+      # This would be an empty string if `setup` is skipped.
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      quantization_matrix: ${{ needs.setup.outputs.quantization_matrix }}
+      ci_event: ${{ inputs.ci_event }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+
+    secrets: inherit
+
+  check_new_failures:
+    if: ${{ always() && needs.send_results.result == 'success' }}
+    name: Check new failures
+    needs: send_results
+    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_intel_xpu.yml@main
+    with:
+      docker: ${{ inputs.docker }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      job: ${{ inputs.job }}
+      slack_report_channel: ${{ inputs.slack_report_channel }}
+      ci_event: ${{ inputs.ci_event }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      pr_number: ${{ inputs.pr_number }}
+      runner_group: ${{ inputs.runner_group }}
+      env_file: ${{ inputs.env_file }}
+    secrets: inherit
