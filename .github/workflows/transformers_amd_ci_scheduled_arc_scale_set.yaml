@@ -422,7 +422,7 @@ jobs:
     secrets: inherit
 
   check_new_failures:
-    if: ${{ always() && needs.send_results.result == 'success' }}
+    if: ${{ !cancelled() && needs.send_results.result == 'success' }}
     name: Check new failures
     needs: send_results
     uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@main
