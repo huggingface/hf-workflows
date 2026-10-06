@@ -422,7 +422,8 @@ jobs:
     secrets: inherit
 
   check_new_failures:
-    if: ${{ !cancelled() && needs.send_results.result == 'success' }}
+    # Temporarily skip for scheduled runs (no pr_number). Re-enable in a few days.
+    if: ${{ !cancelled() && needs.send_results.result == 'success' && inputs.pr_number != '' }}
     name: Check new failures
     needs: send_results
     uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@main
