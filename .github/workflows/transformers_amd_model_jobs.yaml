@@ -60,8 +60,9 @@ jobs:
         run: |
           echo "${INPUTS_FOLDER_SLICES}"
           echo "${MATRIX_FOLDERS}"
-          echo "${{ toJson(fromJson(inputs.folder_slices)[inputs.slice_id]) }}"
+          echo "${SLICE_FOLDERS}"
         env:
+          SLICE_FOLDERS: ${{ toJson(fromJson(inputs.folder_slices)[inputs.slice_id]) }}
           INPUTS_FOLDER_SLICES: ${{ inputs.folder_slices }}
           MATRIX_FOLDERS: ${{ matrix.folders }}
 
@@ -118,12 +119,18 @@ jobs:
 
       - name: Run all tests on GPU
         working-directory: /transformers
-        run: python3 -m pytest -rsfE -v --make-reports=${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports tests/${{ matrix.folders }}  -m "not not_device_test"
+        run: python3 -m pytest -rsfE -v --make-reports="${INPUTS_MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports" "tests/${MATRIX_FOLDERS}"  -m "not not_device_test"
+        env:
+          INPUTS_MACHINE_TYPE: ${{ inputs.machine_type }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
 
       - name: Failure short reports
         if: ${{ failure() }}
         continue-on-error: true
-        run: cat /transformers/reports/${{ inputs.machine_type }}_run_models_gpu_${{ matrix.folders }}_test_reports/failures_short.txt
+        run: cat "/transformers/reports/${INPUTS_MACHINE_TYPE}_run_models_gpu_${MATRIX_FOLDERS}_test_reports/failures_short.txt"
+        env:
+          INPUTS_MACHINE_TYPE: ${{ inputs.machine_type }}
+          MATRIX_FOLDERS: ${{ matrix.folders }}
 
       - name: Run test
         shell: bash
