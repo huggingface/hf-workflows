@@ -53,6 +53,20 @@ env:
   NUM_SLICES: 4
 
 jobs:
+  check_runner_status:
+    permissions:
+      contents: read
+    name: Check Runner Status
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout transformers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Check Runner Status
+        run: python utils/check_self_hosted_runner.py --target_runners hfc-intel-b60-1gpu-1 --token ${{ secrets.ACCESS_REPO_INFO_TOKEN }}
+
   check_runners:
     permissions: {}
     name: Check Runners
@@ -105,10 +119,6 @@ jobs:
       folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
     steps:
-      - name: Checkout transformers
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          fetch-depth: 2
       - name: Update clone
         env:
           commit_sha: ${{ inputs.commit_sha || github.sha }}
