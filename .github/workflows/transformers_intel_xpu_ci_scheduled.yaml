@@ -110,26 +110,23 @@ jobs:
         with:
           fetch-depth: 2
       - name: Update clone
-        working-directory: /transformers
         env:
           commit_sha: ${{ inputs.commit_sha || github.sha }}
         run: |
           git fetch origin "$commit_sha" && git checkout "$commit_sha"
 
       - name: Cleanup
-        working-directory: /transformers
         run: |
           rm -rf tests/__pycache__
           rm -rf tests/models/__pycache__
           rm -rf reports
 
       - name: Show installed libraries and their versions
-        working-directory: /transformers
         run: pip freeze
 
       - id: set-matrix
         name: Identify models to test
-        working-directory: /transformers/tests
+        working-directory: /tests
         env:
           subdirs: ${{ inputs.subdirs }}
         run: |
@@ -147,7 +144,6 @@ jobs:
           echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
 
       - name: Environment
-        working-directory: /transformers
         run: python3 utils/print_env.py
 
   run_models_gpu:
