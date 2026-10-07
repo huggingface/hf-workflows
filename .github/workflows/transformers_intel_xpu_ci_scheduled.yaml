@@ -24,9 +24,6 @@ on:
       report_repo_id:
         required: true
         type: string
-      env_file:
-        required: false
-        type: string
       commit_sha:
         required: false
         type: string
@@ -73,7 +70,6 @@ jobs:
         -v /dev/dri/by-path:/dev/dri/by-path
         --device /dev/dri:/dev/dri
         -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
     steps:
       - name: XPU-INFO
         run: |
@@ -105,11 +101,14 @@ jobs:
         -v /dev/dri/by-path:/dev/dri/by-path
         --device /dev/dri:/dev/dri
         -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
     outputs:
       folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
     steps:
+      - name: Checkout transformers
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 2
       - name: Update clone
         working-directory: /transformers
         env:
@@ -167,7 +166,6 @@ jobs:
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}
       docker: ${{ inputs.docker }}
-      env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
       pytest_marker: ${{ inputs.pytest_marker }}
@@ -194,7 +192,6 @@ jobs:
         -v /dev/dri/by-path:/dev/dri/by-path
         --device /dev/dri:/dev/dri
         -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
     steps:
       - name: Update clone
         working-directory: /transformers
@@ -272,7 +269,6 @@ jobs:
         -v /dev/dri/by-path:/dev/dri/by-path
         --device /dev/dri:/dev/dri
         -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
     steps:
       - name: Update clone
         working-directory: /transformers
@@ -352,7 +348,6 @@ jobs:
         -v /dev/dri/by-path:/dev/dri/by-path
         --device /dev/dri:/dev/dri
         -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
     steps:
       - name: Update clone
         working-directory: /transformers
@@ -450,5 +445,4 @@ jobs:
       report_repo_id: ${{ inputs.report_repo_id }}
       pr_number: ${{ inputs.pr_number }}
       runner_group: ${{ inputs.runner_group }}
-      env_file: ${{ inputs.env_file }}
     secrets: inherit
