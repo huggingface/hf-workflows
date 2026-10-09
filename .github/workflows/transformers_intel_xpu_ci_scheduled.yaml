@@ -72,6 +72,7 @@ jobs:
       contents: read
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
+    needs: check_runner_status
     runs-on: ubuntu-latest
     outputs:
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
