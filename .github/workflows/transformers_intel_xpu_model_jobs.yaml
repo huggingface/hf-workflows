@@ -45,8 +45,6 @@ env:
   TF_FORCE_GPU_ALLOW_GROWTH: true
   RUN_PT_TF_CROSS_TESTS: 1
 
-permissions: {}
-
 jobs:
   run_models_gpu:
     permissions:
