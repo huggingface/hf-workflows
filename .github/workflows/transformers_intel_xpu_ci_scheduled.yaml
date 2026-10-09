@@ -67,98 +67,41 @@ jobs:
       - name: Check Runner Status
         run: python utils/check_self_hosted_runner.py --target_runners hfc-intel-b60-1gpu-1 --token ${{ secrets.ACCESS_REPO_INFO_TOKEN }}
 
-  check_runners:
-    permissions: {}
-    name: Check Runners
-    strategy:
-      matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on:
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
-    container:
-      image: ${{ inputs.docker }}
-      options: >-
-        --shm-size "8g"
-        --privileged
-        --network host
-        -v /dev/dri/by-path:/dev/dri/by-path
-        --device /dev/dri:/dev/dri
-        -v /mnt/cache/.cache/huggingface:/mnt/cache/
-    steps:
-      - name: XPU-INFO
-        run: |
-          sycl-ls || true
-          xpu-smi || true
-
-      - name: Show XPU environment
-        run: |
-          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
-          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
-
   setup:
     permissions:
       contents: read
     if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
     name: Setup
-    needs: check_runners
-    strategy:
-      matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on:
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
-    container:
-      image: ${{ inputs.docker }}
-      options: >-
-        --shm-size "8g"
-        --privileged
-        --network host
-        -v /dev/dri/by-path:/dev/dri/by-path
-        --device /dev/dri:/dev/dri
-        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+    runs-on: ubuntu-latest
     outputs:
-      folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
+      folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
     steps:
-      - name: Update clone
-        working-directory: /transformers
-        env:
-          commit_sha: ${{ inputs.commit_sha || github.sha }}
-        run: |
-          git fetch origin "$commit_sha" && git checkout "$commit_sha"
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Cleanup
-        working-directory: /transformers
-        run: |
-          rm -rf tests/__pycache__
-          rm -rf tests/models/__pycache__
-          rm -rf reports
-
-      - name: Show installed libraries and their versions
-        working-directory: /transformers
-        run: pip freeze
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: .python-version
 
       - id: set-matrix
+        if: contains(fromJSON('["run_models_gpu", "run_trainer_and_fsdp_gpu"]'), inputs.job)
         name: Identify models to test
-        working-directory: /transformers/tests
+        working-directory: tests
         env:
-          subdirs: ${{ inputs.subdirs }}
+          JOB: ${{ inputs.job }}
         run: |
-          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
-          echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
-
-      - name: XPU-INFO
-        run: |
-          sycl-ls || true
-          xpu-smi || true
-
-      - name: Show XPU environment
-        run: |
-          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
-          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
-
-      - name: Environment
-        working-directory: /transformers
-        run: python3 utils/print_env.py
+          if [ "$JOB" = "run_models_gpu" ]; then
+            echo "folder_slices=$(python3 ../utils/split_model_tests.py --num_splits "$NUM_SLICES")" >> "$GITHUB_OUTPUT"
+            echo "slice_ids=$(python3 -c 'import os, sys; print(list(range(int(os.environ[\"NUM_SLICES\"]))))')" >> "$GITHUB_OUTPUT"
+          elif [ "$JOB" = "run_trainer_and_fsdp_gpu" ]; then
+            echo "folder_slices=[['trainer'], ['fsdp']]" >> "$GITHUB_OUTPUT"
+            echo "slice_ids=[0, 1]" >> "$GITHUB_OUTPUT"
+          fi
 
   run_models_gpu:
     if: ${{ inputs.job == 'run_models_gpu' }}
@@ -171,7 +114,7 @@ jobs:
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
     uses: ./.github/workflows/transformers_intel_xpu_model_jobs.yaml
     with:
-      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      folder_slices: ${{ needs.check_runners.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}

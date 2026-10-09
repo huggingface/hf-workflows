@@ -45,6 +45,8 @@ env:
   TF_FORCE_GPU_ALLOW_GROWTH: true
   RUN_PT_TF_CROSS_TESTS: 1
 
+permissions: {}
+
 jobs:
   run_models_gpu:
     permissions:
@@ -90,28 +92,20 @@ jobs:
           echo "$matrix_folders"
           echo "matrix_folders=$matrix_folders" >> $GITHUB_ENV
 
-      - name: Update clone
-        working-directory: /transformers
-        env:
-          commit_sha: ${{ inputs.commit_sha || github.sha }}
-        run: |
-          git fetch origin "$commit_sha" && git checkout "$commit_sha"
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
-        working-directory: /transformers
-        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
+      - name: Install dependencies
+        run: |
+          pip install -e .[testing,torch] "numpy<2.0.0" scipy scikit-learn
 
       - name: Update / Install some packages (for Past CI)
         if: ${{ contains(inputs.docker, '-past-') }}
-        working-directory: /transformers
         run: |
           python3 -m pip install -U datasets
-
-      - name: Update / Install some packages (for Past CI)
-        if: ${{ contains(inputs.docker, '-past-') && contains(inputs.docker, '-pytorch-') }}
-        working-directory: /transformers
-        run: |
-          python3 -m pip install --no-cache-dir git+https://github.com/huggingface/accelerate@main#egg=accelerate
 
       - name: XPU-INFO
         run: |
@@ -124,16 +118,13 @@ jobs:
           echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
 
       - name: Environment
-        working-directory: /transformers
         run: |
           python3 utils/print_env.py
 
       - name: Show installed libraries and their versions
-        working-directory: /transformers
         run: pip freeze
 
       - name: Set `machine_type` for report and artifact names
-        working-directory: /transformers
         shell: bash
         env:
           input_machine_type: ${{ inputs.machine_type }}
@@ -156,10 +147,9 @@ jobs:
         env:
           report_name_prefix: ${{ inputs.report_name_prefix }}
         run: |
-          mkdir -p "/transformers/reports/${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports"
+          mkdir -p "reports/${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports"
 
       - name: Run all tests on GPU
-        working-directory: /transformers
         env:
           report_name_prefix: ${{ inputs.report_name_prefix }}
           pytest_marker: ${{ inputs.pytest_marker }}
@@ -175,14 +165,14 @@ jobs:
         continue-on-error: true
         env:
           report_name_prefix: ${{ inputs.report_name_prefix }}
-        run: cat "/transformers/reports/${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports/failures_short.txt"
+        run: cat "reports/${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports/failures_short.txt"
 
       - name: "Test suite reports artifacts: ${{ env.machine_type }}_${{ inputs.report_name_prefix }}_${{ env.matrix_folders }}_test_reports"
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: ${{ env.machine_type }}_${{ inputs.report_name_prefix }}_${{ env.matrix_folders }}_test_reports
-          path: /transformers/reports/${{ env.machine_type }}_${{ inputs.report_name_prefix }}_${{ env.matrix_folders }}_test_reports
+          path: reports/${{ env.machine_type }}_${{ inputs.report_name_prefix }}_${{ env.matrix_folders }}_test_reports
 
   collated_reports:
     name: Collated Reports
