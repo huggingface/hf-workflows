@@ -114,7 +114,7 @@ jobs:
         slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
     uses: ./.github/workflows/transformers_intel_xpu_model_jobs.yaml
     with:
-      folder_slices: ${{ needs.check_runners.outputs.folder_slices }}
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
       machine_type: ${{ matrix.machine_type }}
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}
@@ -361,7 +361,7 @@ jobs:
     name: Slack Report
     needs:
       [
-        check_runners,
+        check_runner_status,
         setup,
         run_models_gpu,
         run_pipelines_torch_gpu,
