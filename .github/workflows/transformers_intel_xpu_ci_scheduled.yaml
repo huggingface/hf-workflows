@@ -129,7 +129,7 @@ jobs:
       contents: read
     if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
     name: PyTorch pipelines
-    needs: check_runners
+    needs: setup
     strategy:
       fail-fast: false
       matrix:
@@ -206,7 +206,7 @@ jobs:
       contents: read
     if: ${{ inputs.job == 'run_examples_gpu' }}
     name: Examples directory
-    needs: check_runners
+    needs: setup
     strategy:
       fail-fast: false
       matrix:
@@ -285,7 +285,7 @@ jobs:
       contents: read
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
     name: Torch XPU deepspeed tests
-    needs: check_runners
+    needs: setup
     strategy:
       fail-fast: false
       matrix:
