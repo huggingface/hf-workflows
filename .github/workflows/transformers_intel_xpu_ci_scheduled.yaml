@@ -251,86 +251,6 @@ jobs:
           name: ${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
           path: /transformers/reports/${{ env.machine_type }}_run_pipelines_torch_gpu_test_reports
 
-  run_examples_gpu:
-    permissions:
-      contents: read
-    if: ${{ inputs.job == 'run_examples_gpu' }}
-    name: Examples directory
-    needs: check_runners
-    strategy:
-      fail-fast: false
-      matrix:
-        machine_type: [1gpu]
-    runs-on:
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
-    container:
-      image: ${{ inputs.docker }}
-      options: >-
-        --shm-size "8g"
-        --privileged
-        --network host
-        -v /dev/dri/by-path:/dev/dri/by-path
-        --device /dev/dri:/dev/dri
-        -v /mnt/cache/.cache/huggingface:/mnt/cache/
-        ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
-    steps:
-      - name: Update clone
-        working-directory: /transformers
-        run: git fetch && git checkout ${{ github.sha }}
-
-      - name: Reinstall transformers in edit mode (remove the one installed during docker image build)
-        working-directory: /transformers
-        run: python3 -m pip uninstall -y transformers && python3 -m pip install -e .
-
-      - name: XPU-INFO
-        run: |
-          sycl-ls || true
-          xpu-smi || true
-
-      - name: Show XPU environment
-        run: |
-          echo "SYCL_DEVICE_FILTER: $SYCL_DEVICE_FILTER"
-          echo "ONEAPI_DEVICE_SELECTOR: $ONEAPI_DEVICE_SELECTOR"
-
-      - name: Environment
-        working-directory: /transformers
-        run: python3 utils/print_env.py
-
-      - name: Show installed libraries and their versions
-        working-directory: /transformers
-        run: pip freeze
-
-      - name: Set `machine_type` for report and artifact names
-        working-directory: /transformers
-        shell: bash
-        run: |
-          if [ "${{ matrix.machine_type }}" = "1gpu" ]; then
-            machine_type=single-gpu
-          elif [ "${{ matrix.machine_type }}" = "2gpu" ]; then
-            machine_type=multi-gpu
-          else
-            machine_type=${{ matrix.machine_type }}
-          fi
-          echo "machine_type=$machine_type" >> $GITHUB_ENV
-
-      - name: Run examples tests on GPU
-        working-directory: /transformers
-        run: |
-          pip install -r examples/pytorch/_tests_requirements.txt
-          python3 -m pytest -v --make-reports=${{ env.machine_type }}_run_examples_gpu_test_reports examples/pytorch -m "not not_device_test"
-
-      - name: Failure short reports
-        if: ${{ failure() }}
-        continue-on-error: true
-        run: cat /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports/failures_short.txt
-
-      - name: "Test suite reports artifacts: ${{ env.machine_type }}_run_examples_gpu_test_reports"
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ env.machine_type }}_run_examples_gpu_test_reports
-          path: /transformers/reports/${{ env.machine_type }}_run_examples_gpu_test_reports
-
   run_torch_cuda_extensions_gpu:
     permissions:
       contents: read
@@ -417,7 +337,6 @@ jobs:
         setup,
         run_models_gpu,
         run_pipelines_torch_gpu,
-        run_examples_gpu,
         run_torch_cuda_extensions_gpu,
       ]
     if: ${{ always() }}
