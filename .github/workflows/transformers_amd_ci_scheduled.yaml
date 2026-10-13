@@ -211,7 +211,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: ${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_pipelines_torch_gpu_test_reports
@@ -272,7 +272,7 @@ jobs:
 
       - name: "Test suite reports artifacts: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports"
         if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: ${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
           path: /transformers/reports/${{ matrix.machine_type }}_run_torch_cuda_extensions_gpu_test_reports
