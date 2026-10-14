@@ -70,13 +70,14 @@ jobs:
   setup:
     permissions:
       contents: read
-    if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
+    if: contains(fromJSON('["run_models_gpu", "run_trainer_and_fsdp_gpu", "run_quantization_torch_gpu"]'), inputs.job)
     name: Setup
     needs: check_runner_status
     runs-on: ubuntu-latest
     outputs:
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
       folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
+      quantization_matrix: ${{ steps.set-matrix-quantization.outputs.quantization_matrix }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -90,14 +91,27 @@ jobs:
           python-version-file: .python-version
 
       - id: set-matrix
-        if: contains(fromJSON('["run_models_gpu"]'), inputs.job)
+        if: contains(fromJSON('["run_models_gpu", "run_trainer_and_fsdp_gpu"]'), inputs.job)
         name: Identify models to test
         working-directory: tests
         env:
           subdirs: ${{ inputs.subdirs }}
+          JOB: ${{ inputs.job }}
         run: |
-          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
-          echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
+          if [ "$JOB" = "run_models_gpu" ]; then
+            echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
+            echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
+          elif [ "$JOB" = "run_trainer_and_fsdp_gpu" ]; then
+            echo "folder_slices=[['trainer'], ['fsdp']]" >> $GITHUB_OUTPUT
+            echo "slice_ids=[0, 1]" >> $GITHUB_OUTPUT
+          fi
+
+      - id: set-matrix-quantization
+        if: ${{ inputs.job == 'run_quantization_torch_gpu' }}
+        name: Identify quantization method to test
+        working-directory: tests
+        run: |
+          echo "quantization_matrix=$(python3 -c 'import os; tests = os.getcwd(); quantization_tests = os.listdir(os.path.join(tests, "quantization")); d = sorted(list(filter(os.path.isdir, [f"quantization/{x}" for x in quantization_tests]))) ;  print(d)')" >> $GITHUB_OUTPUT
 
   run_models_gpu:
     if: ${{ inputs.job == 'run_models_gpu' }}
@@ -147,7 +161,6 @@ jobs:
       contents: read
     if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
     name: PyTorch pipelines
-    needs: setup
     strategy:
       fail-fast: false
       matrix:
@@ -214,7 +227,6 @@ jobs:
       contents: read
     if: ${{ inputs.job == 'run_torch_cuda_extensions_gpu' }}
     name: Torch XPU deepspeed tests
-    needs: setup
     strategy:
       fail-fast: false
       matrix:
@@ -369,6 +381,8 @@ jobs:
         run_models_gpu,
         run_pipelines_torch_gpu,
         run_torch_cuda_extensions_gpu,
+        run_trainer_and_fsdp_gpu,
+        run_quantization_torch_gpu,
       ]
     if: ${{ always() }}
     uses: huggingface/transformers/.github/workflows/slack-report.yml@main
@@ -383,7 +397,6 @@ jobs:
       ci_event: ${{ inputs.ci_event }}
       report_repo_id: ${{ inputs.report_repo_id }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
-
     secrets: inherit
 
   check_new_failures:
