@@ -98,7 +98,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e .[testing,torch] "numpy<2.0.0" scipy scikit-learn
+          pip install -e .[testing,torch] scipy scikit-learn
 
       - name: Update / Install some packages (for Past CI)
         if: ${{ contains(inputs.docker, '-past-') }}
