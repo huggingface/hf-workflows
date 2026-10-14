@@ -302,7 +302,7 @@ jobs:
         folders: ${{ fromJson(needs.setup.outputs.quantization_matrix) }}
         machine_type: [1gpu, 2gpu]
     runs-on:
-      group: ${{ inputs.runner_scale_set }}-${{ matrix.machine_type }}
+      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
     container:
       image: ${{ inputs.docker }}
       options: >-
