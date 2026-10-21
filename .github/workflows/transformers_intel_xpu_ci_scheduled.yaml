@@ -385,7 +385,7 @@ jobs:
         run_quantization_torch_gpu,
       ]
     if: ${{ always() }}
-    uses: huggingface/transformers/.github/workflows/slack-report.yml@main
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@08917bd9e73d7e0472550783b05255c202faa0c2  # main
     with:
       job: ${{ inputs.job }}
       # This would be `skipped` if `setup` is skipped.
@@ -403,7 +403,7 @@ jobs:
     if: ${{ always() && needs.send_results.result == 'success' }}
     name: Check new failures
     needs: send_results
-    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_intel_xpu.yml@main
+    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_intel_xpu.yml@74d74410045b1a50c8372e1b285886ebcebcdcc9  # main
     with:
       docker: ${{ inputs.docker }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
