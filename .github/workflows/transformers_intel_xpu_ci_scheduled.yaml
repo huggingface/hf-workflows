@@ -57,7 +57,7 @@ jobs:
     permissions:
       contents: read
     name: Check Runner Status
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout transformers
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -73,7 +73,7 @@ jobs:
     if: contains(fromJSON('["run_models_gpu", "run_trainer_and_fsdp_gpu", "run_quantization_torch_gpu"]'), inputs.job)
     name: Setup
     needs: check_runner_status
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     outputs:
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
       folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
