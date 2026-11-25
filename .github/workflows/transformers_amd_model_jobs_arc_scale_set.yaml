@@ -204,11 +204,13 @@ jobs:
           if [ -n "${pytest_marker}" ]; then
             MARKER_ARGS="-m ${pytest_marker}"
           fi
-          K_ARGS=()
+          # POSIX sh (the container's shell): no arrays. -k needs the expression as a
+          # single quoted argument, so branch on whether pytest_k is set.
           if [ -n "${pytest_k}" ]; then
-            K_ARGS=(-k "${pytest_k}")
+            python3 -m pytest -rsfE -v ${MARKER_ARGS} -k "${pytest_k}" ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
+          else
+            python3 -m pytest -rsfE -v ${MARKER_ARGS} ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
           fi
-          python3 -m pytest -rsfE -v ${MARKER_ARGS} "${K_ARGS[@]}" ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
 
       - name: Failure short reports
         if: ${{ failure() }}
