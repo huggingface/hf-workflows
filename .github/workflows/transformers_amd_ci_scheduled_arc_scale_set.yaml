@@ -105,6 +105,9 @@ jobs:
     outputs:
       folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
       slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
+      important_slices: ${{ steps.set-matrix.outputs.important_slices }}
+      other_slices: ${{ steps.set-matrix.outputs.other_slices }}
+      other_slice_ids: ${{ steps.set-matrix.outputs.other_slice_ids }}
     steps:
       - name: Update clone
         working-directory: /transformers
@@ -130,8 +133,36 @@ jobs:
         env:
           subdirs: ${{ inputs.subdirs }}
         run: |
-          echo "folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")" >> $GITHUB_OUTPUT
+          folder_slices=$(python3 ../utils/split_model_tests.py --subdirs "$subdirs" --num_splits "$NUM_SLICES")
+          echo "folder_slices=$folder_slices" >> $GITHUB_OUTPUT
           echo "slice_ids=$(python3 -c "d = list(range($NUM_SLICES)); print(d)")" >> $GITHUB_OUTPUT
+          # Important models run first (see `run_important_models_*`), the other folders after them.
+          FOLDER_SLICES="$folder_slices" python3 - >> $GITHUB_OUTPUT <<'EOF'
+          import ast, json, os, sys
+
+          sys.path.insert(0, "../utils")
+          try:
+              from important_files import IMPORTANT_MODELS
+          except ImportError:
+              IMPORTANT_MODELS = []
+
+          important = {f"models/{model}" for model in IMPORTANT_MODELS}
+          folders = [folder for folders in ast.literal_eval(os.environ["FOLDER_SLICES"]) for folder in folders]
+          first = [folder for folder in folders if folder in important]
+          others = [folder for folder in folders if folder not in important]
+
+          num_slices = int(os.environ["NUM_SLICES"])
+          size, extra = divmod(len(others), num_slices)
+          other_slices, end = [], 0
+          for idx in range(num_slices):
+              start, end = end, end + size + (1 if idx < extra else 0)
+              if others[start:end]:
+                  other_slices.append(others[start:end])
+
+          print(f"important_slices={json.dumps([first] if first else [])}")
+          print(f"other_slices={json.dumps(other_slices)}")
+          print(f"other_slice_ids={json.dumps(list(range(len(other_slices))))}")
+          EOF
 
       - name: ROCM-INFO
         run: rocminfo | grep "Agent" -A 14
@@ -145,19 +176,78 @@ jobs:
         working-directory: /transformers
         run: python3 utils/print_env.py
 
-  run_models_gpu:
-    if: ${{ inputs.job == 'run_models_gpu' }}
-    name: Single GPU tests
+  # The important models run first, so that they are not the ones left in the queue (and cancelled after 24 hours) when
+  # the runners can't go through all the jobs. Each machine type has its own chain: the 1gpu runners move on to the other
+  # models as soon as the 1gpu important model jobs are done, without waiting for the 2gpu ones.
+  run_important_models_1gpu:
+    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' }}
+    name: Important model tests (1gpu)
     needs: setup
+    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.important_slices }}
+      machine_type: 1gpu
+      slice_id: 0
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      env_file: ${{ inputs.env_file }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_important_models_2gpu:
+    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' }}
+    name: Important model tests (2gpu)
+    needs: setup
+    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.important_slices }}
+      machine_type: 2gpu
+      slice_id: 0
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      env_file: ${{ inputs.env_file }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_models_gpu_1gpu:
+    # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
+    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
+    name: Single GPU tests (1gpu, ${{ matrix.slice_id }})
+    needs: [setup, run_important_models_1gpu]
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
-        slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
+        slice_id: ${{ fromJSON(needs.setup.outputs.other_slice_ids) }}
     uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
     with:
-      folder_slices: ${{ needs.setup.outputs.folder_slices }}
-      machine_type: ${{ matrix.machine_type }}
+      folder_slices: ${{ needs.setup.outputs.other_slices }}
+      machine_type: 1gpu
+      slice_id: ${{ matrix.slice_id }}
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      env_file: ${{ inputs.env_file }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_models_gpu_2gpu:
+    # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
+    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
+    name: Single GPU tests (2gpu, ${{ matrix.slice_id }})
+    needs: [setup, run_important_models_2gpu]
+    strategy:
+      fail-fast: false
+      matrix:
+        slice_id: ${{ fromJSON(needs.setup.outputs.other_slice_ids) }}
+    uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.other_slices }}
+      machine_type: 2gpu
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}
       docker: ${{ inputs.docker }}
@@ -323,7 +413,10 @@ jobs:
       [
         check_runners,
         setup,
-        run_models_gpu,
+        run_important_models_1gpu,
+        run_important_models_2gpu,
+        run_models_gpu_1gpu,
+        run_models_gpu_2gpu,
         run_pipelines_torch_gpu,
         run_torch_cuda_extensions_gpu,
       ]
