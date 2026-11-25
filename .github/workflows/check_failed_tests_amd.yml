@@ -29,7 +29,14 @@ on:
         type: number
         default: 4
       runner_group:
-        required: true
+        required: false
+        default: ""
+        type: string
+      runs_on:
+        # JSON array of runner labels for a label-addressed pool; used instead of
+        # runner_group when non-empty.
+        required: false
+        default: ""
         type: string
       env_file:
         required: false
@@ -128,8 +135,7 @@ jobs:
     strategy:
       matrix:
         run_idx: ${{ fromJson(needs.setup_check_new_failures.outputs.matrix) }}
-    runs-on:
-      group: ${{ inputs.runner_group }}-1gpu
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-1gpu"}}', inputs.runner_group)) }}
     outputs:
       process: ${{ needs.setup_check_new_failures.outputs.process }}
     container:
@@ -281,8 +287,7 @@ jobs:
     name: "process bad commit reports"
     needs: check_new_failures
     if: needs.check_new_failures.outputs.process == 'true'
-    runs-on:
-      group: ${{ inputs.runner_group }}-1gpu
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-1gpu"}}', inputs.runner_group)) }}
     container:
       image: ${{ inputs.docker }}
       options: >-
