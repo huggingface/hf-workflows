@@ -216,7 +216,7 @@ jobs:
   run_models_gpu_1gpu:
     # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
     if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
-    name: Single GPU tests (1gpu, ${{ matrix.slice_id }})
+    name: Model tests (1gpu, ${{ matrix.slice_id }})
     needs: [setup, run_important_models_1gpu]
     strategy:
       fail-fast: false
@@ -238,7 +238,7 @@ jobs:
   run_models_gpu_2gpu:
     # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
     if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
-    name: Single GPU tests (2gpu, ${{ matrix.slice_id }})
+    name: Model tests (2gpu, ${{ matrix.slice_id }})
     needs: [setup, run_important_models_2gpu]
     strategy:
       fail-fast: false
