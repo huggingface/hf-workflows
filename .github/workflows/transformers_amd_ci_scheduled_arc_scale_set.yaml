@@ -392,6 +392,5 @@ jobs:
       report_repo_id: ${{ inputs.report_repo_id }}
       pr_number: ${{ inputs.pr_number }}
       runner_group: ${{ inputs.runner_group }}
-      runs_on: ${{ inputs.runs_on }}
       env_file: ${{ inputs.env_file }}
     secrets: inherit
