@@ -1,0 +1,160 @@
+name: Self-hosted runner (scheduled-tpu)
+
+# Note: For the TPU CI, we rely on a caller workflow in transformers and on the workflow_call event to trigger the CI.
+
+on:
+  workflow_call:
+    inputs:
+      job:
+        description: "`run_models_gpu` or `run_pipelines_torch_gpu`"
+        required: true
+        type: string
+      slack_report_channel:
+        required: true
+        type: string
+      runner_group:
+        required: true
+        type: string
+      docker:
+        required: true
+        type: string
+      ci_event:
+        required: true
+        type: string
+      report_repo_id:
+        required: true
+        type: string
+      commit_sha:
+        required: false
+        type: string
+      subdirs:
+        required: false
+        default: ""
+        type: string
+      pytest_marker:
+        required: false
+        type: string
+    outputs:
+      is_infrastructure_ok:
+        description: "Whether the CI infrastructure (slack reporting) succeeded"
+        value: ${{ jobs.send_results.outputs.is_slack_reporting_job_ok == 'true' }}
+
+env:
+  # More slices than runners, so that a runner finishing early takes the next one.
+  NUM_SLICES: 4
+
+jobs:
+  setup:
+    permissions:
+      contents: read
+    if: ${{ inputs.job == 'run_models_gpu' }}
+    name: Setup
+    runs-on: ubuntu-24.04
+    outputs:
+      slice_ids: ${{ steps.set-matrix.outputs.slice_ids }}
+      folder_slices: ${{ steps.set-matrix.outputs.folder_slices }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout the scripts
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: hf-workflows
+          sparse-checkout: scripts/transformers_tpu
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: .python-version
+
+      - id: set-matrix
+        name: Identify models to test
+        working-directory: tests
+        env:
+          subdirs: ${{ inputs.subdirs }}
+        run: |
+          python3 ../hf-workflows/scripts/transformers_tpu/split_folders.py --subdirs "$subdirs" --num-slices "$NUM_SLICES" >> "$GITHUB_OUTPUT"
+
+  run_models_single_gpu:
+    if: ${{ inputs.job == 'run_models_gpu' }}
+    name: Model tests (single-gpu)
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
+    uses: ./.github/workflows/transformers_tpu_model_jobs.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      machine_type: single-gpu
+      slice_id: ${{ matrix.slice_id }}
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_models_multi_gpu:
+    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' }}
+    name: Model tests (multi-gpu)
+    needs: [setup, run_models_single_gpu]
+    strategy:
+      fail-fast: false
+      matrix:
+        slice_id: ${{ fromJSON(needs.setup.outputs.slice_ids) }}
+    uses: ./.github/workflows/transformers_tpu_model_jobs.yaml
+    with:
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      machine_type: multi-gpu
+      slice_id: ${{ matrix.slice_id }}
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: ${{ inputs.pytest_marker }}
+    secrets: inherit
+
+  run_pipelines_torch_gpu:
+    if: ${{ inputs.job == 'run_pipelines_torch_gpu' }}
+    name: PyTorch pipelines
+    strategy:
+      fail-fast: false
+      matrix:
+        machine_type: [single-gpu, multi-gpu]
+    uses: ./.github/workflows/transformers_tpu_model_jobs.yaml
+    with:
+      folder_slices: '[["pipelines"]]'
+      machine_type: ${{ matrix.machine_type }}
+      slice_id: 0
+      runner_group: ${{ inputs.runner_group }}
+      docker: ${{ inputs.docker }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+      pytest_marker: not not_device_test
+      report_name_prefix: run_pipelines_torch_gpu
+      single_report: true
+    secrets: inherit
+
+  send_results:
+    name: Slack Report
+    needs: [setup, run_models_single_gpu, run_models_multi_gpu, run_pipelines_torch_gpu]
+    if: ${{ always() }}
+    uses: huggingface/transformers/.github/workflows/slack-report.yml@baf90d22c1d857623ea443c459ed4f1c7df4d11f  # tpu-ci-batched-reports
+    with:
+      job: ${{ inputs.job }}
+      # This would be `skipped` if `setup` is skipped.
+      setup_status: ${{ needs.setup.result }}
+      slack_report_channel: ${{ inputs.slack_report_channel }}
+      # This would be an empty string if `setup` is skipped.
+      folder_slices: ${{ needs.setup.outputs.folder_slices }}
+      quantization_matrix: ""
+      ci_event: ${{ inputs.ci_event }}
+      report_repo_id: ${{ inputs.report_repo_id }}
+      commit_sha: ${{ inputs.commit_sha || github.sha }}
+    secrets: inherit
