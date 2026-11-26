@@ -29,12 +29,13 @@ on:
         type: number
         default: 4
       runner_group:
-        required: false
-        default: ""
+        # ARC runner scale set: jobs run on `group: <runner_group>-1gpu`.
+        # If `runs_on` is set, it is not used to pick runners, only as the GPU name in reports.
+        required: true
         type: string
       runs_on:
-        # JSON array of runner labels for a label-addressed pool; used instead of
-        # runner_group when non-empty.
+        # JSON array of runner labels for a label-addressed pool. If non-empty, used
+        # for every `runs-on` instead of `runner_group`.
         required: false
         default: ""
         type: string

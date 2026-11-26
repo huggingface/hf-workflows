@@ -13,13 +13,13 @@ on:
         required: true
         type: string
       runner_group:
-        # Set this (an ARC scale set) OR runs_on (a label-addressed pool), not both.
-        required: false
-        default: ""
+        # ARC runner scale set: jobs run on `group: <runner_group>-<machine_type>`.
+        # If `runs_on` is set, it is not used to pick runners, only as the GPU name in reports.
+        required: true
         type: string
       runs_on:
         # JSON array of runner labels for a label-addressed pool (e.g. AMD DevLab
-        # Dispatch); used instead of runner_group when non-empty.
+        # Dispatch). If non-empty, used for every `runs-on` instead of `runner_group`.
         required: false
         default: ""
         type: string
@@ -490,7 +490,9 @@ jobs:
     if: ${{ !cancelled() && needs.send_results.result == 'success' && inputs.pr_number != '' }}
     name: Check new failures
     needs: send_results
-    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@74d74410045b1a50c8372e1b285886ebcebcdcc9  # main
+    # Local path so it always matches this commit (which has the runs_on input),
+    # letting label-addressed callers (e.g. Strix Halo) pass runs_on through.
+    uses: ./.github/workflows/check_failed_tests_amd.yml
     with:
       docker: ${{ inputs.docker }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
@@ -500,5 +502,6 @@ jobs:
       report_repo_id: ${{ inputs.report_repo_id }}
       pr_number: ${{ inputs.pr_number }}
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
       env_file: ${{ inputs.env_file }}
     secrets: inherit

@@ -13,12 +13,13 @@ on:
         required: true
         type: number
       runner_group:
-        required: false
-        default: ""
+        # ARC runner scale set: jobs run on `group: <runner_group>-<machine_type>`.
+        # If `runs_on` is set, it is not used to pick runners, only as the GPU name in reports.
+        required: true
         type: string
       runs_on:
-        # JSON array of runner labels for a label-addressed pool; used instead of
-        # runner_group when non-empty.
+        # JSON array of runner labels for a label-addressed pool. If non-empty, used
+        # for every `runs-on` instead of `runner_group`.
         required: false
         default: ""
         type: string
@@ -204,13 +205,9 @@ jobs:
           if [ -n "${pytest_marker}" ]; then
             MARKER_ARGS="-m ${pytest_marker}"
           fi
-          # POSIX sh (the container's shell): no arrays. -k needs the expression as a
-          # single quoted argument, so branch on whether pytest_k is set.
-          if [ -n "${pytest_k}" ]; then
-            python3 -m pytest -rsfE -v ${MARKER_ARGS} -k "${pytest_k}" ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
-          else
-            python3 -m pytest -rsfE -v ${MARKER_ARGS} ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
-          fi
+          # ${pytest_k:+-k "$pytest_k"} keeps the -k expression as a single argument
+          # (POSIX sh, no arrays) and expands to nothing when pytest_k is empty.
+          python3 -m pytest -rsfE -v ${MARKER_ARGS} ${pytest_k:+-k "$pytest_k"} ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
 
       - name: Failure short reports
         if: ${{ failure() }}
