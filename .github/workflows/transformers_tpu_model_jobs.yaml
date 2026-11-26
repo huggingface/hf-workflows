@@ -1,0 +1,169 @@
+name: model jobs (TPU)
+
+# Runs a slice of test folders in a single job. The reports are uploaded as one `tpu_batch_*` artifact, each with a
+# `job_link.txt` that `notification_service.py` in transformers uses to link the report to this job.
+
+on:
+  workflow_call:
+    inputs:
+      folder_slices:
+        required: true
+        type: string
+      machine_type:
+        description: "`single-gpu` (one process per chip) or `multi-gpu` (one process holding every chip)"
+        required: true
+        type: string
+      slice_id:
+        required: true
+        type: number
+      runner_group:
+        required: true
+        type: string
+      docker:
+        required: true
+        type: string
+      commit_sha:
+        required: false
+        type: string
+      pytest_marker:
+        required: false
+        type: string
+      report_name_prefix:
+        required: false
+        default: run_models_gpu
+        type: string
+      single_report:
+        description: "Leave the folder out of the report name (for a job running one folder)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  HF_HOME: /mnt/cache
+  TRANSFORMERS_IS_CI: yes
+  OMP_NUM_THREADS: 8
+  MKL_NUM_THREADS: 8
+  RUN_SLOW: yes
+  # For gated repositories, we still need to agree to share information on the Hub repo. page in order to get access.
+  # This token is created under the bot `hf-transformers-bot`.
+  HF_TOKEN: ${{ secrets.HF_HUB_READ_TOKEN }}
+  TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT: /mnt/cache/tpu-compile-cache
+  TPU_COMPILE_CACHE_BUCKET: hf://buckets/hf-gcp-tpu-internal/transformers-ci-cache/tier3
+
+jobs:
+  run_models_tpu:
+    permissions:
+      contents: read
+    name: Tests (${{ inputs.machine_type }}, ${{ inputs.slice_id }})
+    runs-on:
+      group: ${{ inputs.runner_group }}
+    # Under the 24 h lifetime of `GITHUB_TOKEN`, so that the reports are uploaded.
+    timeout-minutes: 1200
+    container:
+      image: ${{ inputs.docker }}
+      options: >-
+        --privileged
+        ${{ vars.TPU_V6E_SLICE }}
+        --shm-size 64gb
+        --ipc host
+        -v /mnt/hf_cache:/mnt/cache/
+        -v /var/run/tpu-plugin:/var/run/tpu-plugin
+    env:
+      HUB_CACHE_ROOT: /mnt/cache/tpu-ci-hub/${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.report_name_prefix }}-${{ inputs.machine_type }}-${{ inputs.slice_id }}
+      SCRIPTS: hf-workflows/scripts/transformers_tpu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout the scripts
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: hf-workflows
+          sparse-checkout: scripts/transformers_tpu
+          persist-credentials: false
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          # Keep the torch and torch-tpu builds of the image.
+          python3 -m pip freeze | grep -i -E '^(torch|torch[-_]tpu|torchvision|torchaudio|torchcodec)==' > "$RUNNER_TEMP/constraints.txt" || true
+          python3 -m pip install -c "$RUNNER_TEMP/constraints.txt" -e ".[testing]" scipy scikit-learn librosa soundfile
+
+      - name: Environment
+        run: python3 utils/print_env.py
+
+      - name: Show installed libraries and their versions
+        run: python3 -m pip freeze
+
+      - name: Install the Hugging Face CLI
+        shell: bash
+        run: |
+          # Apart from the tests, which may need another `huggingface_hub` version.
+          python3 -m venv "$RUNNER_TEMP/hf-cli"
+          "$RUNNER_TEMP/hf-cli/bin/pip" install --quiet "huggingface_hub==2.4.0"
+          echo "HF_CLI=$RUNNER_TEMP/hf-cli/bin/hf" >> "$GITHUB_ENV"
+
+      - name: Restore the compilation cache
+        continue-on-error: true
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TPU_CI_CACHE_TOKEN }}
+        run: |
+          mkdir -p "$TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT"
+          bash "$SCRIPTS/cache_sync.sh" "$TPU_COMPILE_CACHE_BUCKET" "$TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT"
+
+      - name: Run the tests (${{ inputs.machine_type }})
+        shell: bash
+        env:
+          FOLDERS: ${{ toJson(fromJson(inputs.folder_slices)[inputs.slice_id]) }}
+          MACHINE_TYPE: ${{ inputs.machine_type }}
+          REPORT_NAME_PREFIX: ${{ inputs.report_name_prefix }}
+          SINGLE_REPORT: ${{ inputs.single_report }}
+          PYTEST_MARKER: ${{ inputs.pytest_marker }}
+          JOB_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ job.check_run_id }}
+        run: |
+          python3 "$SCRIPTS/run_tests.py" \
+            --folders "$FOLDERS" \
+            --machine-type "$MACHINE_TYPE" \
+            --report-name-prefix "$REPORT_NAME_PREFIX" \
+            --single-report "$SINGLE_REPORT" \
+            --pytest-marker "$PYTEST_MARKER" \
+            --hub-cache-root "$HUB_CACHE_ROOT" \
+            --logs-dir tpu_logs \
+            --job-link "$JOB_LINK"
+
+      - name: Publish the compilation cache
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: bash
+        env:
+          HF_TOKEN: ${{ secrets.HF_TPU_CI_CACHE_TOKEN }}
+        run: |
+          bash "$SCRIPTS/cache_sync.sh" "$TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT" "$TPU_COMPILE_CACHE_BUCKET"
+
+      - name: Clean up
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          rm -rf "$HUB_CACHE_ROOT" /dev/shm/torch_tpu_cache/ci-w*
+
+      - name: Upload the reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tpu_batch_${{ inputs.report_name_prefix }}_${{ inputs.machine_type }}_${{ inputs.slice_id }}
+          path: reports
+          retention-days: 1
+
+      - name: Upload the logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tpu_logs_${{ inputs.report_name_prefix }}_${{ inputs.machine_type }}_${{ inputs.slice_id }}
+          path: tpu_logs
