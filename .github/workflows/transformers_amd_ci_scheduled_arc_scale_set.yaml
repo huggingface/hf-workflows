@@ -13,8 +13,41 @@ on:
         required: true
         type: string
       runner_group:
+        # ARC runner scale set: jobs run on `group: <runner_group>-<machine_type>`.
+        # If `runs_on` is set, it is not used to pick runners, only as the GPU name in reports.
         required: true
         type: string
+      runs_on:
+        # JSON array of runner labels for a label-addressed pool (e.g. AMD DevLab
+        # Dispatch). If non-empty, used for every `runs-on` instead of `runner_group`.
+        required: false
+        default: ""
+        type: string
+      machine_types:
+        # JSON array of machine types to run; single-GPU hardware passes '["1gpu"]'.
+        required: false
+        default: '["1gpu", "2gpu"]'
+        type: string
+      hf_cache_dir:
+        # Host path bind-mounted to the container's HF_HOME; default keeps ARC behaviour.
+        required: false
+        default: "/mnt/cache/.cache/huggingface"
+        type: string
+      pytest_k:
+        # Value for the model pytest -k (a skip/selection expression with spaces).
+        required: false
+        default: ""
+        type: string
+      extra_pytest_args:
+        # Extra flags appended to the model pytest command (e.g. --timeout=1200).
+        required: false
+        default: ""
+        type: string
+      job_timeout_minutes:
+        # Job-level timeout for the model jobs. 360 is GitHub's default.
+        required: false
+        default: 360
+        type: number
       docker:
         required: true
         type: string
@@ -61,9 +94,8 @@ jobs:
     name: Check Runners
     strategy:
       matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on: 
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+        machine_type: ${{ fromJSON(inputs.machine_types) }}
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-{1}"}}', inputs.runner_group, matrix.machine_type)) }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -90,9 +122,8 @@ jobs:
     needs: check_runners
     strategy:
       matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on: 
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+        machine_type: ${{ fromJSON(inputs.machine_types) }}
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-{1}"}}', inputs.runner_group, matrix.machine_type)) }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -180,7 +211,7 @@ jobs:
   # the runners can't go through all the jobs. Each machine type has its own chain: the 1gpu runners move on to the other
   # models as soon as the 1gpu important model jobs are done, without waiting for the 2gpu ones.
   run_important_models_1gpu:
-    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' }}
+    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' && contains(fromJSON(inputs.machine_types), '1gpu') }}
     name: Important model tests (1gpu)
     needs: setup
     uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
@@ -189,6 +220,11 @@ jobs:
       machine_type: 1gpu
       slice_id: 0
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
+      hf_cache_dir: ${{ inputs.hf_cache_dir }}
+      pytest_k: ${{ inputs.pytest_k }}
+      extra_pytest_args: ${{ inputs.extra_pytest_args }}
+      job_timeout_minutes: ${{ inputs.job_timeout_minutes }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
@@ -197,7 +233,7 @@ jobs:
     secrets: inherit
 
   run_important_models_2gpu:
-    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' }}
+    if: ${{ inputs.job == 'run_models_gpu' && needs.setup.outputs.important_slices != '[]' && contains(fromJSON(inputs.machine_types), '2gpu') }}
     name: Important model tests (2gpu)
     needs: setup
     uses: ./.github/workflows/transformers_amd_model_jobs_arc_scale_set.yaml
@@ -206,6 +242,11 @@ jobs:
       machine_type: 2gpu
       slice_id: 0
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
+      hf_cache_dir: ${{ inputs.hf_cache_dir }}
+      pytest_k: ${{ inputs.pytest_k }}
+      extra_pytest_args: ${{ inputs.extra_pytest_args }}
+      job_timeout_minutes: ${{ inputs.job_timeout_minutes }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
@@ -215,7 +256,7 @@ jobs:
 
   run_models_gpu_1gpu:
     # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
-    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
+    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' && contains(fromJSON(inputs.machine_types), '1gpu') }}
     name: Model tests (1gpu, ${{ matrix.slice_id }})
     needs: [setup, run_important_models_1gpu]
     strategy:
@@ -228,6 +269,11 @@ jobs:
       machine_type: 1gpu
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
+      hf_cache_dir: ${{ inputs.hf_cache_dir }}
+      pytest_k: ${{ inputs.pytest_k }}
+      extra_pytest_args: ${{ inputs.extra_pytest_args }}
+      job_timeout_minutes: ${{ inputs.job_timeout_minutes }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
@@ -237,7 +283,7 @@ jobs:
 
   run_models_gpu_2gpu:
     # `!cancelled()`: run even when some important model tests failed, or when there was no important model to run.
-    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' }}
+    if: ${{ !cancelled() && inputs.job == 'run_models_gpu' && needs.setup.result == 'success' && needs.setup.outputs.other_slice_ids != '[]' && contains(fromJSON(inputs.machine_types), '2gpu') }}
     name: Model tests (2gpu, ${{ matrix.slice_id }})
     needs: [setup, run_important_models_2gpu]
     strategy:
@@ -250,6 +296,11 @@ jobs:
       machine_type: 2gpu
       slice_id: ${{ matrix.slice_id }}
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
+      hf_cache_dir: ${{ inputs.hf_cache_dir }}
+      pytest_k: ${{ inputs.pytest_k }}
+      extra_pytest_args: ${{ inputs.extra_pytest_args }}
+      job_timeout_minutes: ${{ inputs.job_timeout_minutes }}
       docker: ${{ inputs.docker }}
       env_file: ${{ inputs.env_file }}
       report_repo_id: ${{ inputs.report_repo_id }}
@@ -266,9 +317,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on: 
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+        machine_type: ${{ fromJSON(inputs.machine_types) }}
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-{1}"}}', inputs.runner_group, matrix.machine_type)) }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -341,9 +391,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        machine_type: [1gpu, 2gpu]
-    runs-on: 
-      group: ${{ inputs.runner_group }}-${{ matrix.machine_type }}
+        machine_type: ${{ fromJSON(inputs.machine_types) }}
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-{1}"}}', inputs.runner_group, matrix.machine_type)) }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -441,7 +490,9 @@ jobs:
     if: ${{ !cancelled() && needs.send_results.result == 'success' && inputs.pr_number != '' }}
     name: Check new failures
     needs: send_results
-    uses: huggingface/hf-workflows/.github/workflows/check_failed_tests_amd.yml@74d74410045b1a50c8372e1b285886ebcebcdcc9  # main
+    # Local path so it always matches this commit (which has the runs_on input),
+    # letting label-addressed callers (e.g. Strix Halo) pass runs_on through.
+    uses: ./.github/workflows/check_failed_tests_amd.yml
     with:
       docker: ${{ inputs.docker }}
       commit_sha: ${{ inputs.commit_sha || github.sha }}
@@ -451,5 +502,6 @@ jobs:
       report_repo_id: ${{ inputs.report_repo_id }}
       pr_number: ${{ inputs.pr_number }}
       runner_group: ${{ inputs.runner_group }}
+      runs_on: ${{ inputs.runs_on }}
       env_file: ${{ inputs.env_file }}
     secrets: inherit

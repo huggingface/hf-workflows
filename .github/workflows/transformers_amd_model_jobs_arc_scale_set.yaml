@@ -13,7 +13,15 @@ on:
         required: true
         type: number
       runner_group:
+        # ARC runner scale set: jobs run on `group: <runner_group>-<machine_type>`.
+        # If `runs_on` is set, it is not used to pick runners, only as the GPU name in reports.
         required: true
+        type: string
+      runs_on:
+        # JSON array of runner labels for a label-addressed pool. If non-empty, used
+        # for every `runs-on` instead of `runner_group`.
+        required: false
+        default: ""
         type: string
       docker:
         required: true
@@ -34,6 +42,28 @@ on:
         required: false
         default: run_models_gpu
         type: string
+      hf_cache_dir:
+        # Host path bind-mounted to the container's HF_HOME (/mnt/cache). DevLab
+        # Dispatch uses /mnt/scratch/cache/hf; the default keeps the ARC behaviour.
+        required: false
+        default: "/mnt/cache/.cache/huggingface"
+        type: string
+      pytest_k:
+        # Value for pytest -k (a skip/selection expression with spaces). Quoted
+        # safely in the run step. Empty by default.
+        required: false
+        default: ""
+        type: string
+      extra_pytest_args:
+        # Extra flags appended to the pytest command (e.g. --timeout=1200). Empty by default.
+        required: false
+        default: ""
+        type: string
+      job_timeout_minutes:
+        # Job-level timeout. 360 is GitHub's default, i.e. the current behaviour.
+        required: false
+        default: 360
+        type: number
 
 env:
   HF_HOME: /mnt/cache
@@ -60,8 +90,8 @@ jobs:
       fail-fast: false
       matrix:
         folders: ${{ fromJson(inputs.folder_slices)[inputs.slice_id] }}
-    runs-on: 
-      group: ${{ inputs.runner_group }}-${{ inputs.machine_type }}
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || fromJSON(format('{{"group":"{0}-{1}"}}', inputs.runner_group, inputs.machine_type)) }}
+    timeout-minutes: ${{ inputs.job_timeout_minutes }}
     container:
       image: ${{ inputs.docker }}
       options: >-
@@ -69,7 +99,7 @@ jobs:
         --device /dev/dri
         --shm-size "16gb"
         --ipc host
-        -v /mnt/cache/.cache/huggingface:/mnt/cache/
+        -v ${{ inputs.hf_cache_dir }}:/mnt/cache/
         ${{ inputs.env_file && format('--env-file {0}', inputs.env_file) || '' }}
 
     steps:
@@ -168,12 +198,16 @@ jobs:
         env:
           report_name_prefix: ${{ inputs.report_name_prefix }}
           pytest_marker: ${{ inputs.pytest_marker }}
+          pytest_k: ${{ inputs.pytest_k }}
+          extra_pytest_args: ${{ inputs.extra_pytest_args }}
         run: |
           MARKER_ARGS=""
           if [ -n "${pytest_marker}" ]; then
             MARKER_ARGS="-m ${pytest_marker}"
           fi
-          python3 -m pytest -rsfE -v ${MARKER_ARGS} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
+          # ${pytest_k:+-k "$pytest_k"} keeps the -k expression as a single argument
+          # (POSIX sh, no arrays) and expands to nothing when pytest_k is empty.
+          python3 -m pytest -rsfE -v ${MARKER_ARGS} ${pytest_k:+-k "$pytest_k"} ${extra_pytest_args} --make-reports="${machine_type}_${report_name_prefix}_${matrix_folders}_test_reports" "tests/${{ matrix.folders }}"
 
       - name: Failure short reports
         if: ${{ failure() }}
