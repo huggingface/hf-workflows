@@ -94,7 +94,9 @@ jobs:
         shell: bash
         run: |
           if python3 -c "import torch_tpu" 2>/dev/null; then exit 0; fi
-          apt-get update && apt-get install -y --no-install-recommends ffmpeg espeak-ng tesseract-ocr libsndfile1 git-lfs
+          apt-get update && apt-get install -y --no-install-recommends ffmpeg espeak-ng tesseract-ocr libsndfile1 git-lfs \
+            libtcmalloc-minimal4t64
+          echo "LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4" >> "$GITHUB_ENV"
           python3 -m pip install --quiet uv
           uv pip install --system --no-cache-dir \
             torch==2.15.0+cpu torchvision==0.29.2+cpu torchaudio==2.11.1+cpu torchcodec==0.17.0+cpu \
@@ -134,6 +136,20 @@ jobs:
           mkdir -p "$TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT"
           bash "$SCRIPTS/cache_sync.sh" "$TPU_COMPILE_CACHE_BUCKET" "$TORCH_TPU_TIER3_COMPILATION_CACHE_ROOT"
 
+      # Smoke run only: a Hub cache on the NFS volume made download-heavy tests about 2x slower on the dev VM.
+      - name: Choose the Hub cache disk
+        shell: bash
+        run: |
+          df -h / /mnt/cache /dev/shm || true
+          free_gb=$(df --output=avail -BG / | tail -1 | tr -dc 0-9)
+          if [ "$free_gb" -ge 400 ]; then
+            echo "HUB_CACHE_DIR=/root/tpu-ci-hub/$(basename "$HUB_CACHE_ROOT")" >> "$GITHUB_ENV"
+            echo "Hub cache on the local disk (${free_gb} GB free)"
+          else
+            echo "HUB_CACHE_DIR=$HUB_CACHE_ROOT" >> "$GITHUB_ENV"
+            echo "Hub cache on /mnt/cache: only ${free_gb} GB free on the local disk"
+          fi
+
       - name: Run the tests (${{ inputs.machine_type }})
         shell: bash
         env:
@@ -150,7 +166,7 @@ jobs:
             --report-name-prefix "$REPORT_NAME_PREFIX" \
             --single-report "$SINGLE_REPORT" \
             --pytest-marker "$PYTEST_MARKER" \
-            --hub-cache-root "$HUB_CACHE_ROOT" \
+            --hub-cache-root "${HUB_CACHE_DIR:-$HUB_CACHE_ROOT}" \
             --logs-dir tpu_logs \
             --job-link "$JOB_LINK"
 
@@ -167,7 +183,7 @@ jobs:
         if: ${{ always() }}
         shell: bash
         run: |
-          rm -rf "$HUB_CACHE_ROOT" /dev/shm/torch_tpu_cache/ci-w*
+          rm -rf "${HUB_CACHE_DIR:-$HUB_CACHE_ROOT}" "$HUB_CACHE_ROOT" /dev/shm/torch_tpu_cache/ci-w*
 
       - name: Upload the reports
         if: ${{ always() }}
