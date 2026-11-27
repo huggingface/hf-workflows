@@ -88,6 +88,22 @@ jobs:
           sparse-checkout: scripts/transformers_tpu
           persist-credentials: false
 
+      # Smoke run only: `huggingface/transformers-pytorch-tpu` is not on Docker Hub yet, so this installs what its
+      # Dockerfile does on top of a plain Python image.
+      - name: Install the image dependencies
+        shell: bash
+        run: |
+          if python3 -c "import torch_tpu" 2>/dev/null; then exit 0; fi
+          apt-get update && apt-get install -y --no-install-recommends ffmpeg espeak-ng tesseract-ocr libsndfile1 git-lfs
+          python3 -m pip install --quiet uv
+          uv pip install --system --no-cache-dir \
+            torch==2.15.0+cpu torchvision==0.29.2+cpu torchaudio==2.11.1+cpu torchcodec==0.17.0+cpu \
+            --index-url https://download.pytorch.org/whl/cpu
+          uv pip install --system --no-cache-dir torch-tpu==0.3.0 libtpu==0.0.53.1
+          uv pip freeze --system | grep -E '^(torch|torchvision|torchaudio|torchcodec|torch-tpu|libtpu)==' > "$RUNNER_TEMP/image-constraints.txt"
+          uv pip install --system --no-cache-dir -c "$RUNNER_TEMP/image-constraints.txt" ".[all,testing,sklearn]" pytesseract
+          uv pip uninstall --system kernels
+
       - name: Install dependencies
         shell: bash
         run: |
